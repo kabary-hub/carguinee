@@ -9,6 +9,7 @@ const envSchema = z.object({
   LIBRETRANSLATE_URL: z.string().url().default("http://localhost:5000"),
   LIBRETRANSLATE_API_KEY: z.string().default(""),
   TRANSLATION_ENABLED: z.coerce.boolean().default(true),
+  RESEND_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

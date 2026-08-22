@@ -9,6 +9,7 @@ import { loginSchema, registerSchema } from "./auth.schemas.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 import { strictLimiter } from "../../lib/rate-limiter.js";
 import { logger } from "../../lib/logger.js";
+import { sendPasswordResetEmail } from "../../lib/email.js";
 
 export const authRouter = Router();
 
@@ -123,7 +124,7 @@ authRouter.post("/change-password", requireAuth, async (request, response) => {
 });
 
 // ── Réinitialisation du mot de passe (envoi code par SMS ou email) ──────────
-const forgotPasswordSchema = z.object({ phone: z.string().min(1), method: z.enum(["sms", "email"]).optional() });
+const forgotPasswordSchema = z.object({ phone: z.string().min(1), method: z.enum(["sms", "email"]).default("email") });
 
 authRouter.post("/forgot-password", strictLimiter, async (request, response) => {
   const parsed = forgotPasswordSchema.safeParse(request.body);
@@ -153,11 +154,17 @@ authRouter.post("/forgot-password", strictLimiter, async (request, response) => 
     });
 
     if (method === "email" && user.email) {
-      logger.info({ userId: user.id, method: "email" }, "Password reset code sent");
-      response.json({ status: "ok", message: "Code envoyé par email." });
+      const emailSent = await sendPasswordResetEmail(user.email, code);
+      if (emailSent) {
+        logger.info({ userId: user.id, method: "email" }, "Password reset code sent");
+        response.json({ status: "ok", message: "Code envoyé par email." });
+      } else {
+        logger.error({ userId: user.id }, "Failed to send reset email");
+        response.status(500).json({ status: "error", message: "Impossible d'envoyer l'email. Réessayez." });
+      }
     } else {
-      logger.info({ userId: user.id, method: "sms" }, "Password reset code sent");
-      response.json({ status: "ok", message: "Code envoyé par SMS." });
+      logger.info({ userId: user.id, method: "sms" }, "Password reset code logged (SMS not configured)");
+      response.json({ status: "ok", message: "Code généré. (SMS non configuré — en dev, vérifiez les logs du serveur)" });
     }
   } catch (error) {
     handleRouteError(error, response, "Erreur.", 500);
