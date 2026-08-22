@@ -2,20 +2,20 @@ import { useEffect, useState, useCallback } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { VehicleGallery } from "../components/VehicleGallery";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { RatingStars } from "../components/RatingStars";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch } from "../lib/api";
-import type { ApiResponse, Vehicle } from "../lib/domain";
+import { AppShell } from "../../components/AppShell";
+import { VehicleGallery } from "../../components/client/VehicleGallery";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { RatingStars } from "../../components/client/RatingStars";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
+import type { ApiResponse, Vehicle } from "../../lib/domain";
 
-import { VehicleInfoSection } from "../components/vehicle/VehicleInfoSection";
-import { VehicleDocumentsSection } from "../components/vehicle/VehicleDocumentsSection";
-import { VehicleOwnerSection } from "../components/vehicle/VehicleOwnerSection";
-import { VehicleReviewsSection } from "../components/vehicle/VehicleReviewsSection";
-import { BookingSidebar } from "../components/vehicle/BookingSidebar";
+import { VehicleInfoSection } from "../../components/vehicle/VehicleInfoSection";
+import { VehicleDocumentsSection } from "../../components/vehicle/VehicleDocumentsSection";
+import { VehicleOwnerSection } from "../../components/vehicle/VehicleOwnerSection";
+import { VehicleReviewsSection } from "../../components/vehicle/VehicleReviewsSection";
+import { BookingSidebar } from "../../components/vehicle/BookingSidebar";
 
 type Review = {
   id: string;

@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch, resolvePhotoUrl } from "../lib/api";
-import { useApiData } from "../hooks/useApiData";
-import { formatGnf } from "../lib/domain";
-import { getHomeRouteForRole } from "../lib/roles";
+import { AppShell } from "../../components/AppShell";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch, resolvePhotoUrl } from "../../lib/api";
+import { useApiData } from "../../hooks/useApiData";
+import { formatGnf } from "../../lib/domain";
+import { getHomeRouteForRole } from "../../lib/roles";
 
 /**
  * Type d'un favori retourné par l'API

@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { StatusBadge } from "../components/StatusBadge";
-import { TranslateFieldButton } from "../components/TranslateFieldButton";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch, deleteVehiclePhoto, resolvePhotoUrl, uploadVehiclePhotos } from "../lib/api";
-import type { ApiResponse, Booking, Vehicle } from "../lib/domain";
-import { formatGnf } from "../lib/domain";
+import { AppShell } from "../../components/AppShell";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { StatusBadge } from "../../components/StatusBadge";
+import { TranslateFieldButton } from "../../components/TranslateFieldButton";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch, deleteVehiclePhoto, resolvePhotoUrl, uploadVehiclePhotos } from "../../lib/api";
+import type { ApiResponse, Booking, Vehicle } from "../../lib/domain";
+import { formatGnf } from "../../lib/domain";
 
 const VEHICLE_TYPES = [
   "CITADINE", "BERLINE", "SUV", "QUATRE_QUATRE", "UTILITAIRE", "MINIBUS", "CAMION", "MOTO", "AUTRE",

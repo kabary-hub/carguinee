@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch } from "../lib/api";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
 
 /**
  * Formulaire pour laisser un avis sur une réservation terminée

@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch } from "../lib/api";
-import { TranslateButton } from "../components/TranslateButton";
-import { getHomeRouteForRole } from "../lib/roles";
+import { AppShell } from "../../components/AppShell";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
+import { TranslateButton } from "../../components/client/TranslateButton";
+import { getHomeRouteForRole } from "../../lib/roles";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

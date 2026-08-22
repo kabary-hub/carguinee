@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { BookingDetailsModal } from "../components/BookingDetailsModal";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { ReviewForm } from "../components/ReviewForm";
-import { StatusBadge } from "../components/StatusBadge";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch } from "../lib/api";
-import type { ApiResponse, Booking } from "../lib/domain";
-import { formatDate, formatGnf } from "../lib/domain";
-import { getHomeRouteForRole } from "../lib/roles";
+import { AppShell } from "../../components/AppShell";
+import { BookingDetailsModal } from "../../components/client/BookingDetailsModal";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { ReviewForm } from "../../components/client/ReviewForm";
+import { StatusBadge } from "../../components/StatusBadge";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
+import type { ApiResponse, Booking } from "../../lib/domain";
+import { formatDate, formatGnf } from "../../lib/domain";
+import { getHomeRouteForRole } from "../../lib/roles";
 
 export function MyBookingsPage() {
   const { user } = useAuth();

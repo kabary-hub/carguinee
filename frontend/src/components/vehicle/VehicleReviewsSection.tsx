@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { RatingStars } from "../RatingStars";
-import { ReviewForm } from "../ReviewForm";
+import { RatingStars } from "../client/RatingStars";
+import { ReviewForm } from "../client/ReviewForm";
 import type { AuthUser } from "../../types/auth";
 
 type Review = {

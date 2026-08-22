@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { useAuth } from "../contexts/AuthContext";
-import { apiFetch, resolvePhotoUrl } from "../lib/api";
-import type { ApiResponse, Vehicle } from "../lib/domain";
-import { formatGnf } from "../lib/domain";
+import { AppShell } from "../../components/AppShell";
+import { useAuth } from "../../contexts/AuthContext";
+import { apiFetch, resolvePhotoUrl } from "../../lib/api";
+import type { ApiResponse, Vehicle } from "../../lib/domain";
+import { formatGnf } from "../../lib/domain";
 
 type VehicleResult = { items: Vehicle[]; pagination: { page: number; total: number; totalPages: number } };
 const types = ["CITADINE", "BERLINE", "SUV", "QUATRE_QUATRE", "UTILITAIRE", "MINIBUS", "CAMION", "MOTO"];

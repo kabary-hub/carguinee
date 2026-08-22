@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { RatingStars } from "../RatingStars";
+import { RatingStars } from "../client/RatingStars";
 import type { Vehicle } from "../../lib/domain";
 
 type Props = {

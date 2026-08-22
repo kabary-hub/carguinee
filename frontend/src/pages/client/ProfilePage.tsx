@@ -2,14 +2,14 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ThemeToggle } from "../components/ThemeToggle";
-import { LanguageSwitcher } from "../components/LanguageSwitcher";
-import { PasswordInput } from "../components/PasswordInput";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { useAuth } from "../contexts/AuthContext";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch } from "../lib/api";
-import { getHomeRouteForRole } from "../lib/roles"
+import { ThemeToggle } from "../../components/ThemeToggle";
+import { LanguageSwitcher } from "../../components/LanguageSwitcher";
+import { PasswordInput } from "../../components/PasswordInput";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
+import { getHomeRouteForRole } from "../../lib/roles"
 
 export function ProfilePage() {
   const { user, logout } = useAuth();

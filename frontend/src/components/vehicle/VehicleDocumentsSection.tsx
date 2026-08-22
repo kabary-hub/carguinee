@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { RatingStars } from "../RatingStars";
+import { RatingStars } from "../client/RatingStars";
 
 type ConditionReport = {
   exteriorDamage: string | null;

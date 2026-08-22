@@ -8,19 +8,19 @@ const HomePage = lazy(() => import("./pages/HomePage").then((m) => ({ default: m
 const LoginPage = lazy(() => import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("./pages/RegisterPage").then((m) => ({ default: m.RegisterPage })));
 const AccessDeniedPage = lazy(() => import("./pages/AccessDeniedPage").then((m) => ({ default: m.AccessDeniedPage })));
-const VehiclesPage = lazy(() => import("./pages/VehiclesPage").then((m) => ({ default: m.VehiclesPage })));
-const VehicleDetailPage = lazy(() => import("./pages/VehicleDetailPage").then((m) => ({ default: m.VehicleDetailPage })));
-const ProfilePage = lazy(() => import("./pages/ProfilePage").then((m) => ({ default: m.ProfilePage })));
-const MyBookingsPage = lazy(() => import("./pages/MyBookingsPage").then((m) => ({ default: m.MyBookingsPage })));
-const OwnerDashboardPage = lazy(() => import("./pages/OwnerDashboardPage").then((m) => ({ default: m.OwnerDashboardPage })));
-const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })));
-const AdminChatsPage = lazy(() => import("./pages/AdminChatsPage").then((m) => ({ default: m.AdminChatsPage })));
-const FavoritesPage = lazy(() => import("./pages/FavoritesPage").then((m) => ({ default: m.FavoritesPage })));
-const NotificationsPage = lazy(() => import("./pages/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
-const MessagesPage = lazy(() => import("./pages/MessagesPage").then((m) => ({ default: m.MessagesPage })));
-const ConditionsGeneralesPage = lazy(() => import("./pages/ConditionsGeneralesPage").then((m) => ({ default: m.ConditionsGeneralesPage })));
-const MentionsLegalesPage = lazy(() => import("./pages/MentionsLegalesPage").then((m) => ({ default: m.MentionsLegalesPage })));
-const PolitiqueConfidentialitePage = lazy(() => import("./pages/PolitiqueConfidentialitePage").then((m) => ({ default: m.PolitiqueConfidentialitePage })));
+const VehiclesPage = lazy(() => import("./pages/client/VehiclesPage").then((m) => ({ default: m.VehiclesPage })));
+const VehicleDetailPage = lazy(() => import("./pages/client/VehicleDetailPage").then((m) => ({ default: m.VehicleDetailPage })));
+const ProfilePage = lazy(() => import("./pages/client/ProfilePage").then((m) => ({ default: m.ProfilePage })));
+const MyBookingsPage = lazy(() => import("./pages/client/MyBookingsPage").then((m) => ({ default: m.MyBookingsPage })));
+const OwnerDashboardPage = lazy(() => import("./pages/owner/OwnerDashboardPage").then((m) => ({ default: m.OwnerDashboardPage })));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })));
+const AdminChatsPage = lazy(() => import("./pages/admin/AdminChatsPage").then((m) => ({ default: m.AdminChatsPage })));
+const FavoritesPage = lazy(() => import("./pages/client/FavoritesPage").then((m) => ({ default: m.FavoritesPage })));
+const NotificationsPage = lazy(() => import("./pages/client/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
+const MessagesPage = lazy(() => import("./pages/client/MessagesPage").then((m) => ({ default: m.MessagesPage })));
+const ConditionsGeneralesPage = lazy(() => import("./pages/legal/ConditionsGeneralesPage").then((m) => ({ default: m.ConditionsGeneralesPage })));
+const MentionsLegalesPage = lazy(() => import("./pages/legal/MentionsLegalesPage").then((m) => ({ default: m.MentionsLegalesPage })));
+const PolitiqueConfidentialitePage = lazy(() => import("./pages/legal/PolitiqueConfidentialitePage").then((m) => ({ default: m.PolitiqueConfidentialitePage })));
 
 // ── Fallback de chargement ──────────────────────────────────────────────────
 function PageFallback() {

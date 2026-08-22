@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
+import { AppShell } from "../../components/AppShell";
 
 /**
  * Page des Conditions Générales d'Utilisation (CGU)

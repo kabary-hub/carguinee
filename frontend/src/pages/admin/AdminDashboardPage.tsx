@@ -1,17 +1,17 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { AppShell } from "../components/AppShell";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { useToast } from "../contexts/ToastContext";
-import { apiFetch } from "../lib/api";
-import type { ApiResponse, Vehicle, Booking } from "../lib/domain";
+import { AppShell } from "../../components/AppShell";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
+import type { ApiResponse, Vehicle, Booking } from "../../lib/domain";
 
-import { AdminValidationsTab } from "../components/admin/AdminValidationsTab";
-import { AdminUsersTab } from "../components/admin/AdminUsersTab";
-import { AdminBookingsTab } from "../components/admin/AdminBookingsTab";
-import { AdminReportsTab } from "../components/admin/AdminReportsTab";
-import type { AdminStats, AdminUser, OwnerRequest, PendingAction, ReportItem } from "../components/admin/adminTypes";
+import { AdminValidationsTab } from "../../components/admin/AdminValidationsTab";
+import { AdminUsersTab } from "../../components/admin/AdminUsersTab";
+import { AdminBookingsTab } from "../../components/admin/AdminBookingsTab";
+import { AdminReportsTab } from "../../components/admin/AdminReportsTab";
+import type { AdminStats, AdminUser, OwnerRequest, PendingAction, ReportItem } from "../../components/admin/adminTypes";
 
 export function AdminDashboardPage() {
   const { t, i18n } = useTranslation();

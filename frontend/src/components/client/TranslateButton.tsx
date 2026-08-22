@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { apiFetch } from "../lib/api";
-import { detectLanguage } from "../lib/detectLanguage";
+import { apiFetch } from "../../lib/api";
+import { detectLanguage } from "../../lib/detectLanguage";
 
 // ── Mapping langue → nom d'affichage ────────────────────────────────────────
 const LANG_NAMES: Record<string, string> = {
