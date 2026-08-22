@@ -16,18 +16,30 @@ export type StatsPrismaClient = {
     }) => Promise<{ publicationStatus: string; _count: { _all: number } }[]>;
   };
   user: {
-    count: () => Promise<number>;
+    count: (args?: {
+      where?: { identityVerified?: boolean };
+    }) => Promise<number>;
     groupBy: (args: {
       by: string[];
       _count?: { _all: boolean };
     }) => Promise<{ role: string; _count: { _all: number } }[]>;
   };
   rentalBooking: {
+    count: () => Promise<number>;
+    findMany: (args: {
+      where?: { status?: { in: string[] } };
+      select?: { totalAmountGnf: boolean };
+    }) => Promise<{ totalAmountGnf: number }[]>;
     groupBy: (args: {
       by: string[];
-      _count?: { _all: boolean };
-    }) => Promise<{ status: string; _count: { _all: number } }[]>;
+      _count?: { _all: boolean } | { vehicleId: boolean };
+      orderBy?: { _count?: { vehicleId?: string } };
+      take?: number;
+    }) => Promise<{ status?: string; vehicleId?: string; _count: { _all: number } }[]>;
   };
+  favorite: { count: () => Promise<number> };
+  review: { count: () => Promise<number> };
+  report: { count: (args?: { where?: { status?: string } }) => Promise<number> };
 };
 
 /**
@@ -55,15 +67,15 @@ export async function getAdminStats(
     ]);
 
   // ── Statistiques avancées V2 ──
-  const totalBookings = await prisma.rentalBooking.count();
-  const confirmedBookings = await prisma.rentalBooking.findMany({
+  const totalBookings = await prismaClient.rentalBooking.count();
+  const confirmedBookings = await prismaClient.rentalBooking.findMany({
     where: { status: { in: ["CONFIRMEE", "EN_COURS", "TERMINEE"] } },
     select: { totalAmountGnf: true },
   });
   const totalRevenue = confirmedBookings.reduce((sum, b) => sum + b.totalAmountGnf, 0);
 
   // Top véhicules les plus réservés
-  const topVehicles = await prisma.rentalBooking.groupBy({
+  const topVehicles = await prismaClient.rentalBooking.groupBy({
     by: ["vehicleId"],
     _count: { _all: true },
     orderBy: { _count: { vehicleId: "desc" } },
@@ -71,23 +83,23 @@ export async function getAdminStats(
   });
 
   // Véhicules actifs (publiés)
-  const activeVehicles = await prisma.vehicle.count({
+  const activeVehicles = await prismaClient.vehicle.count({
     where: { publicationStatus: "PUBLIEE" },
   });
 
   // Utilisateurs vérifiés
-  const verifiedUsers = await prisma.user.count({
+  const verifiedUsers = await prismaClient.user.count({
     where: { identityVerified: true },
   });
 
   // Total favoris
-  const totalFavorites = await prisma.favorite.count();
+  const totalFavorites = await prismaClient.favorite.count();
 
   // Total avis
-  const totalReviews = await prisma.review.count();
+  const totalReviews = await prismaClient.review.count();
 
   // Signalements en attente
-  const pendingReports = await prisma.report.count({
+  const pendingReports = await prismaClient.report.count({
     where: { status: "PENDING" },
   });
 
