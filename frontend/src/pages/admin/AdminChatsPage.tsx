@@ -70,30 +70,17 @@ export function AdminChatsPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
 
-  // ── Vérifier admin ──
-  if (!user || user.role !== "ADMIN") {
-    return (
-      <AppShell>
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
-            Accès réservé aux administrateurs.
-          </p>
-        </div>
-      </AppShell>
-    );
-  }
-
-  // ── Charger les conversations ──
+  // ── Hooks TOUJOURS appelés (même si non-admin) ──
   useEffect(() => {
+    if (!user || user.role !== "ADMIN") return;
     apiFetch<{ status: string; data: { items: AdminConversation[] } }>(
       "/api/messages/admin/conversations",
     )
       .then((res) => setConversations(res.data.items))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
-  // ── Charger les messages d'une conversation ──
   const loadMessages = useCallback(async (convId: string) => {
     setLoadingMessages(true);
     try {
@@ -113,10 +100,22 @@ export function AdminChatsPage() {
     if (selectedId) loadMessages(selectedId);
   }, [selectedId, loadMessages]);
 
-  // ── Scroll ──
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // ── Vérifier admin APRÈS les hooks ──
+  if (!user || user.role !== "ADMIN") {
+    return (
+      <AppShell>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <p className="text-lg font-bold text-slate-700 dark:text-slate-300">
+            Accès réservé aux administrateurs.
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
 
   const getOther = (conv: AdminConversation, currentUserId: string) =>
     conv.participant1.id === currentUserId ? conv.participant2 : conv.participant1;
