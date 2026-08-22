@@ -19,8 +19,10 @@ import { chatRouter } from "./modules/chat/chat.routes.js";
 import { contractRouter } from "./modules/contracts/contract.routes.js";
 import { reportRouter, adminReportRouter } from "./modules/reports/report.routes.js";
 import { translateRouter } from "./modules/translate/translate.routes.js";
-
-
+import { authLimiter, standardLimiter } from "./lib/rate-limiter.js";
+import { logger, requestLogger } from "./lib/logger.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { securityHeaders } from "./middleware/securityHeaders.js";
 
 const app = express();
 
@@ -32,6 +34,7 @@ const allowedOrigins = new Set([
   "http://127.0.0.1:5174",
 ]);
 
+app.use(securityHeaders);
 app.use(helmet({
   // Les photos /uploads sont servies par l'API (port 3000) mais affichées
   // par le frontend (port 5173) : la ressource doit rester lisible en
@@ -49,25 +52,26 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
+app.use(requestLogger);
 
 // Les photos téléversées (backend/uploads/vehicles) sont servies depuis
 // /uploads afin que le frontend puisse les afficher directement.
 app.use("/uploads", express.static(path.resolve("uploads")));
 
-app.use("/api/admin", adminRouter);
-app.use("/api/auth", authRouter);
-app.use("/api/bookings", bookingRouter);
-app.use("/api/owner-requests", ownerRequestRouter);
-app.use("/api/vehicles", vehicleRouter);
-app.use("/api/vehicles", vehiclePhotoRouter);
-app.use("/api/reviews", reviewRouter);
-app.use("/api/favorites", favoriteRouter);
-app.use("/api/notifications", notificationRouter);
-app.use("/api/messages", chatRouter);
-app.use("/api/contracts", contractRouter);
-app.use("/api/reports", reportRouter);
-app.use("/api/admin/reports", adminReportRouter);
-app.use("/api", translateRouter);
+app.use("/api/admin", standardLimiter, adminRouter);
+app.use("/api/auth", authLimiter, authRouter);
+app.use("/api/bookings", standardLimiter, bookingRouter);
+app.use("/api/owner-requests", standardLimiter, ownerRequestRouter);
+app.use("/api/vehicles", standardLimiter, vehicleRouter);
+app.use("/api/vehicles", standardLimiter, vehiclePhotoRouter);
+app.use("/api/reviews", standardLimiter, reviewRouter);
+app.use("/api/favorites", standardLimiter, favoriteRouter);
+app.use("/api/notifications", standardLimiter, notificationRouter);
+app.use("/api/messages", standardLimiter, chatRouter);
+app.use("/api/contracts", standardLimiter, contractRouter);
+app.use("/api/reports", standardLimiter, reportRouter);
+app.use("/api/admin/reports", standardLimiter, adminReportRouter);
+app.use("/api", standardLimiter, translateRouter);
 
 app.get("/api/health", async (_request, response) => {
   try {
@@ -80,7 +84,7 @@ app.get("/api/health", async (_request, response) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("Health check database error:", error);
+    logger.error({ error }, "Health check database error");
 
     response.status(503).json({
       status: "error",
@@ -98,6 +102,9 @@ app.use((_request, response) => {
   });
 });
 
+// ── Middleware d'erreur global (doit être APRÈS toutes les routes) ────────
+app.use(errorHandler);
+
 app.listen(env.PORT, () => {
-  console.log(`CarGuinée API démarrée sur http://localhost:${env.PORT}`);
+  logger.info({ port: env.PORT }, "CarGuinée API démarrée");
 });

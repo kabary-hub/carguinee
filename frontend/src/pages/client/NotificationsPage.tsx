@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
-import { useApiData } from "../../hooks/useApiData";
 import { getHomeRouteForRole } from "../../lib/roles";
 
 /**
@@ -59,31 +59,30 @@ export function NotificationsPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const { data: response, loading, error, refetch } = useApiData<{ status: string; data: NotificationsResponse }>("/api/notifications");
+  const queryClient = useQueryClient();
+
+  const { data: response, isLoading: loading, error } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => apiFetch<{ status: string; data: NotificationsResponse }>("/api/notifications"),
+  });
   const notifications = response?.data.items ?? [];
   const unreadCount = response?.data.unreadCount ?? 0;
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   // ── Marquer une notification comme lue ──
-  const markAsRead = async (notificationId: string) => {
-    try {
-      await apiFetch(`/api/notifications/${notificationId}/read`, { method: "PATCH" });
-      refetch();
-    } catch {
-      // Erreur silencieuse
-    }
-  };
+  const markAsReadMutation = useMutation({
+    mutationFn: (notificationId: string) => apiFetch(`/api/notifications/${notificationId}/read`, { method: "PATCH" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
 
   // ── Tout marquer comme lu ──
-  const markAllAsRead = async () => {
-    try {
-      await apiFetch(`/api/notifications/read-all`, { method: "PATCH" });
-      refetch();
+  const markAllAsReadMutation = useMutation({
+    mutationFn: () => apiFetch(`/api/notifications/read-all`, { method: "PATCH" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       showToast(t("notifications.markAllRead"));
-    } catch {
-      // Erreur silencieuse
-    }
-  };
+    },
+  });
 
 
   return (
@@ -105,8 +104,7 @@ export function NotificationsPage() {
             )}
           </div>
           {unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
+            <button                  onClick={() => markAllAsReadMutation.mutate()}
               className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
             >
               {t("notifications.markAllRead")}
@@ -136,7 +134,7 @@ export function NotificationsPage() {
               <div
                 key={notification.id}
                 onClick={() => {
-                  if (!notification.isRead) void markAsRead(notification.id);
+                  if (!notification.isRead) markAsReadMutation.mutate(notification.id);
                   setSelectedNotification(notification);
                 }}
                 className={`cursor-pointer rounded-xl border p-4 transition ${

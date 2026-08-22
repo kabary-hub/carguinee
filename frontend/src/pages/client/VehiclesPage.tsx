@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch, resolvePhotoUrl } from "../../lib/api";
@@ -18,12 +19,10 @@ export function VehiclesPage() {
   const [searchParams] = useSearchParams();
   const initialStatus = searchParams.get("status") || "";
   const [filters, setFilters] = useState({ search: "", type: "", commune: "", mode: "", minPriceGnf: "", maxPriceGnf: "", status: initialStatus });
-  const [result, setResult] = useState<VehicleResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  useEffect(() => {
+  // Construire les query params à partir des filtres
+  const buildQueryString = () => {
     const query = new URLSearchParams({ pageSize: "20" });
     if (filters.search.trim()) query.set("search", filters.search.trim());
     if (filters.type) query.set("type", filters.type);
@@ -32,9 +31,14 @@ export function VehiclesPage() {
     if (filters.minPriceGnf) query.set("minPriceGnf", filters.minPriceGnf);
     if (filters.maxPriceGnf) query.set("maxPriceGnf", filters.maxPriceGnf);
     if (filters.status) query.set("publicationStatus", filters.status);
-    setLoading(true); setError("");
-    apiFetch<ApiResponse<VehicleResult>>(`/api/vehicles?${query.toString()}`).then((payload) => setResult(payload.data)).catch((reason: Error) => setError(reason.message)).finally(() => setLoading(false));
-  }, [filters]);
+    return query.toString();
+  };
+
+  const { data: result, isLoading: loading, error } = useQuery({
+    queryKey: ["vehicles", filters],
+    queryFn: () => apiFetch<ApiResponse<VehicleResult>>(`/api/vehicles?${buildQueryString()}`),
+    select: (payload) => payload.data,
+  });
 
   const update = (field: keyof typeof filters, value: string) => setFilters((current) => ({ ...current, [field]: value }));
   const controlClass = "rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-emerald-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500";

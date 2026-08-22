@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch, resolvePhotoUrl } from "../../lib/api";
-import { useApiData } from "../../hooks/useApiData";
 import { formatGnf } from "../../lib/domain";
 import { getHomeRouteForRole } from "../../lib/roles";
 
@@ -36,19 +36,25 @@ export function FavoritesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { data: response, loading, error, refetch } = useApiData<{ status: string; data: FavoriteItem[] }>("/api/favorites");
+  const queryClient = useQueryClient();
+
+  const { data: response, isLoading: loading, error } = useQuery({
+    queryKey: ["favorites"],
+    queryFn: () => apiFetch<{ status: string; data: FavoriteItem[] }>("/api/favorites"),
+  });
   const favorites = response?.data ?? [];
 
   // ── Retirer un favori ──
-  const removeFavorite = async (vehicleId: string) => {
-    try {
-      await apiFetch(`/api/favorites/${vehicleId}`, { method: "DELETE" });
-      refetch();
+  const removeFavoriteMutation = useMutation({
+    mutationFn: (vehicleId: string) => apiFetch(`/api/favorites/${vehicleId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["favorites"] });
       showToast(t("favorites.removeSuccess"));
-    } catch (reason) {
-      showToast(reason instanceof Error ? reason.message : "Erreur", "error");
-    }
-  };
+    },
+    onError: (reason: Error) => {
+      showToast(reason.message ?? "Erreur", "error");
+    },
+  });
 
 
   return (
@@ -127,7 +133,7 @@ export function FavoritesPage() {
 
                   {/* Bouton retirer */}
                   <button
-                    onClick={() => removeFavorite(vehicle.id)}
+                    onClick={() => removeFavoriteMutation.mutate(vehicle.id)}
                     className="absolute right-3 top-3 rounded-full bg-white/90 p-2 text-red-500 shadow transition hover:bg-red-50 hover:text-red-700 dark:bg-slate-900/90"
                     title={t("vehicles.details.removeFromFavorites")}
                   >
