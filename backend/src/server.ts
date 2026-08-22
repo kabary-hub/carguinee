@@ -25,7 +25,10 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { securityHeaders } from "./middleware/securityHeaders.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
+import { initSentry } from "./lib/sentry.js";
+import { apiVersioning } from "./middleware/apiVersioning.js";
 
+initSentry();
 const app = express();
 
 const allowedOrigins = new Set([
@@ -37,6 +40,7 @@ const allowedOrigins = new Set([
 ]);
 
 app.use(securityHeaders);
+app.use(apiVersioning);
 app.use(helmet({
   // Les photos /uploads sont servies par l'API (port 3000) mais affichées
   // par le frontend (port 5173) : la ressource doit rester lisible en
