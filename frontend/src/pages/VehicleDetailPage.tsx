@@ -1,0 +1,262 @@
+import { useEffect, useState, useCallback } from "react";
+import type { FormEvent } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { AppShell } from "../components/AppShell";
+import { VehicleGallery } from "../components/VehicleGallery";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { RatingStars } from "../components/RatingStars";
+import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
+import { apiFetch } from "../lib/api";
+import type { ApiResponse, Vehicle } from "../lib/domain";
+
+import { VehicleInfoSection } from "../components/vehicle/VehicleInfoSection";
+import { VehicleDocumentsSection } from "../components/vehicle/VehicleDocumentsSection";
+import { VehicleOwnerSection } from "../components/vehicle/VehicleOwnerSection";
+import { VehicleReviewsSection } from "../components/vehicle/VehicleReviewsSection";
+import { BookingSidebar } from "../components/vehicle/BookingSidebar";
+
+type Review = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  categories: Record<string, number> | null;
+  createdAt: string;
+  reviewer: { id: string; firstName: string; lastName: string; averageRating: number | null };
+};
+
+type ReviewsResponse = {
+  items: Review[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
+type ConditionReport = {
+  exteriorDamage: string | null;
+  paintQuality: string | null;
+  engineCondition: string | null;
+  transmissionCondition: string | null;
+  tireCondition: string | null;
+  brakeCondition: string | null;
+  interiorCondition: string | null;
+  seatsCondition: string | null;
+  electronicsWorking: boolean | null;
+  overallRating: number | null;
+  additionalNotes: string | null;
+};
+
+export function VehicleDetailPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { t, i18n } = useTranslation();
+
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [lang, setLang] = useState(i18n.language?.startsWith("en") ? "en" : "fr");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isBooking, setIsBooking] = useState(false);
+  const [showBookingConfirm, setShowBookingConfirm] = useState(false);
+  const [bookingForm, setBookingForm] = useState({ startDate: "", endDate: "", notes: "" });
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [completedBookingId, setCompletedBookingId] = useState<string | null>(null);
+  const [hasAlreadyReviewed, setHasAlreadyReviewed] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+
+  useEffect(() => {
+    const handler = (lng: string) => setLang(lng.startsWith("en") ? "en" : "fr");
+    i18n.on("languageChanged", handler);
+    return () => { i18n.off("languageChanged", handler); };
+  }, [i18n]);
+
+  useEffect(() => {
+    if (id) {
+      apiFetch<ApiResponse<Vehicle>>(`/api/vehicles/${id}`)
+        .then((payload) => setVehicle(payload.data))
+        .catch((reason) => setError(reason.message));
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      apiFetch<ApiResponse<ReviewsResponse>>(`/api/reviews/vehicle/${id}`)
+        .then((payload) => { setReviews(payload.data.items); setReviewsTotal(payload.data.pagination.total); })
+        .catch(() => {});
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id && user) {
+      apiFetch<ApiResponse<import("../lib/domain").Booking[]>>("/api/bookings/mine")
+        .then((payload) => {
+          const completed = payload.data.find((b) => b.vehicle.id === id && b.status === "TERMINEE");
+          if (completed) setCompletedBookingId(completed.id);
+        })
+        .catch(() => {});
+    }
+  }, [id, user]);
+
+  useEffect(() => {
+    if (completedBookingId && user && reviews.length > 0) {
+      setHasAlreadyReviewed(reviews.some((r) => r.reviewer.id === user.id));
+    }
+  }, [completedBookingId, user, reviews]);
+
+  useEffect(() => {
+    if (id && user) {
+      apiFetch<{ status: string; data: { isFavorite: boolean } }>(`/api/favorites/check/${id}`)
+        .then((response) => setIsFavorited(response.data.isFavorite))
+        .catch(() => {});
+    }
+  }, [id, user]);
+
+  const getDescription = useCallback((v: Vehicle) => {
+    if (lang === "en" && v.descriptionEn) return v.descriptionEn;
+    if (lang === "fr" && v.descriptionFr) return v.descriptionFr;
+    return v.descriptionFr || v.descriptionEn || v.description || t("vehicles.details.noDescription");
+  }, [lang, t]);
+
+  const toggleFavorite = async () => {
+    if (!user) { navigate("/connexion"); return; }
+    try {
+      if (isFavorited) {
+        await apiFetch(`/api/favorites/${id}`, { method: "DELETE" });
+        setIsFavorited(false);
+        showToast(t("favorites.removeSuccess"));
+      } else {
+        await apiFetch("/api/favorites", { method: "POST", body: JSON.stringify({ vehicleId: id }) });
+        setIsFavorited(true);
+        showToast(t("favorites.addSuccess"));
+      }
+    } catch (reason) {
+      showToast(reason instanceof Error ? reason.message : "Erreur", "error");
+    }
+  };
+
+  const contactOwner = async () => {
+    if (!user || !vehicle?.owner) { navigate("/connexion"); return; }
+    try {
+      const response = await apiFetch<{ status: string; data: { id: string } }>("/api/messages/conversations", {
+        method: "POST",
+        body: JSON.stringify({ receiverId: vehicle.owner.id, vehicleId: id }),
+      });
+      navigate(`/messages/${response.data.id}`);
+    } catch (reason) {
+      showToast(reason instanceof Error ? reason.message : "Erreur", "error");
+    }
+  };
+
+  const openBookingConfirm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) { navigate("/connexion"); return; }
+    const data = new FormData(event.currentTarget);
+    setBookingForm({ startDate: String(data.get("startDate")), endDate: String(data.get("endDate")), notes: String(data.get("notes") || "") });
+    setShowBookingConfirm(true);
+  };
+
+  const reserve = async () => {
+    setShowBookingConfirm(false);
+    setIsBooking(true);
+    setMessage(""); setError("");
+    try {
+      await apiFetch("/api/bookings", {
+        method: "POST",
+        body: JSON.stringify({ vehicleId: vehicle?.id, startDate: bookingForm.startDate, endDate: bookingForm.endDate, notes: bookingForm.notes || undefined }),
+      });
+      showToast(t("bookings.bookingRequestSent"));
+      setMessage(t("bookings.bookingRequestSent"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("bookings.bookingImpossible"));
+      showToast(reason instanceof Error ? reason.message : t("bookings.bookingImpossible"), "error");
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  if (error && !vehicle) {
+    return (
+      <AppShell>
+        <main className="mx-auto max-w-5xl px-4 py-12">
+          <p className="rounded-xl bg-rose-50 p-4 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">{error}</p>
+          <Link to="/vehicules" className="mt-5 inline-block font-bold text-emerald-700 dark:text-emerald-400">← {t("vehicles.publicCatalog")}</Link>
+        </main>
+      </AppShell>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <AppShell>
+        <p className="p-16 text-center text-slate-500 dark:text-slate-400">{t("common.loading")}</p>
+      </AppShell>
+    );
+  }
+
+  const v = vehicle as Vehicle & Record<string, unknown>;
+  const conditionReport = v.conditionReport as ConditionReport | null | undefined;
+
+  const hasValidVisiteTechnique = v.visiteTechniqueValideJusquA && new Date(String(v.visiteTechniqueValideJusquA)) > new Date();
+  const hasValidAssurance = v.assuranceValideJusquA && new Date(String(v.assuranceValideJusquA)) > new Date();
+  const documentsEnRegle = v.carteGrisePresente && hasValidVisiteTechnique && hasValidAssurance;
+
+  return (
+    <AppShell>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+        <Link to="/vehicules" className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+          ← {t("vehicles.publicCatalog")}
+        </Link>
+
+        <div className="mt-5">
+          <VehicleGallery photos={vehicle.photos} vehicleName={`${vehicle.brand} ${vehicle.model}`} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {[vehicle.type?.replaceAll("_", " "), vehicle.condition, vehicle.year && String(vehicle.year), vehicle.seats && `${vehicle.seats} ${t("vehicles.details.seats")}`]
+            .filter(Boolean)
+            .map((item) => (
+              <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-300">{item}</span>
+            ))}
+          {documentsEnRegle && <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✅ {t("vehicles.details.documentsOk")}</span>}
+          {v.owner?.identityVerified && <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">✅ {t("vehicles.details.verified")}</span>}
+        </div>
+
+        <div className="mt-4 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-black sm:text-3xl">{vehicle.brand} {vehicle.model}</h1>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">📍 {vehicle.commune}, {vehicle.quartier} · {vehicle.secteur}</p>
+            {vehicle.owner?.averageRating && <div className="mt-2"><RatingStars rating={vehicle.owner.averageRating} size="sm" count={reviewsTotal} /></div>}
+          </div>
+          <button onClick={toggleFavorite} className={`rounded-full border p-3 text-xl transition ${isFavorited ? "border-red-300 bg-red-50 text-red-500 dark:border-red-800 dark:bg-red-500/15 dark:text-red-400" : "border-slate-300 bg-white text-slate-400 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:text-red-400"}`} title={isFavorited ? t("vehicles.details.removeFromFavorites") : t("vehicles.details.addToFavorites")}>
+            {isFavorited ? "❤️" : "🤍"}
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="space-y-6">
+            <VehicleInfoSection vehicle={vehicle} getDescription={getDescription} />
+            <VehicleDocumentsSection vehicle={v} conditionReport={conditionReport} />
+            <VehicleOwnerSection vehicle={vehicle} contactOwner={contactOwner} />
+            <VehicleReviewsSection reviews={reviews} reviewsTotal={reviewsTotal} user={user} completedBookingId={completedBookingId} hasAlreadyReviewed={hasAlreadyReviewed} showReviewForm={showReviewForm} setShowReviewForm={setShowReviewForm} setHasAlreadyReviewed={setHasAlreadyReviewed} />
+          </div>
+          <BookingSidebar vehicle={vehicle} user={user} isBooking={isBooking} message={message} error={error} openBookingConfirm={openBookingConfirm} setShowReportDialog={setShowReportDialog} />
+        </div>
+      </main>
+
+      <ConfirmDialog open={showBookingConfirm} title={t("bookings.confirmBooking")} message={t("bookings.confirmBookingMessage", { brand: vehicle.brand, model: vehicle.model, startDate: bookingForm.startDate, endDate: bookingForm.endDate })} confirmLabel={t("common.confirm")} tone="emerald" onConfirm={reserve} onCancel={() => setShowBookingConfirm(false)} />
+
+      <ConfirmDialog open={showReportDialog} title={t("vehicles.details.reportListing")} message={t("vehicles.details.reportReason")} confirmLabel={t("vehicles.details.reportButton")} tone="rose" onConfirm={async () => {
+        try {
+          await apiFetch("/api/reports", { method: "POST", body: JSON.stringify({ targetId: id, targetType: "VEHICLE", reason: "Contenu suspect ou inapproprié" }) });
+          showToast("Signalement envoyé. Merci !");
+          setShowReportDialog(false);
+        } catch (reason) {
+          showToast(reason instanceof Error ? reason.message : "Erreur", "error");
+        }
+      }} onCancel={() => setShowReportDialog(false)} />
+    </AppShell>
+  );
+}

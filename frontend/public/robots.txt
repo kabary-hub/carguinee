@@ -1,0 +1,23 @@
+# CarGuinée — Robots.txt
+# Autorise l'exploration par les moteurs de recherche
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /connexion
+Disallow: /inscription
+Disallow: /profil
+Disallow: /reservations
+Disallow: /proprietaire
+Disallow: /administration
+Disallow: /favoris
+Disallow: /notifications
+Disallow: /messages
+
+# Sitemap
+Sitemap: https://carguinee.com/sitemap.xml
+
+# Délai d'exploration (1 seconde)
+User-agent: *
+Crawl-delay: 1

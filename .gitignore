@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sw?
+
+# AI agent configs
+.continue/
+.windsurf/
+*.tmp
+
+# Generated files
+src/generated/
+prisma/generated/
+
+# Uploaded files
+backend/uploads/
+
+# Temporary test files
+.tmp-*
+
+# Large binary files
+*.pdf

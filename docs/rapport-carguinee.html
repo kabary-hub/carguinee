@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport Complet — CarGuinée</title>
+<style>
+  @page { margin: 20mm 18mm; size: A4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.6; font-size: 11pt; background: #fff; }
+  .cover { page-break-after: always; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90vh; text-align: center; }
+  .cover h1 { font-size: 36pt; color: #059669; margin-bottom: 8px; }
+  .cover .subtitle { font-size: 14pt; color: #64748b; margin-bottom: 40px; }
+  .cover .meta { font-size: 10pt; color: #94a3b8; margin-top: 60px; }
+  h1 { font-size: 18pt; color: #059669; margin: 28px 0 12px; border-bottom: 2px solid #059669; padding-bottom: 6px; }
+  h2 { font-size: 14pt; color: #065f46; margin: 20px 0 8px; }
+  h3 { font-size: 12pt; color: #1e293b; margin: 14px 0 6px; }
+  p, li { font-size: 10.5pt; line-height: 1.65; }
+  ul, ol { margin-left: 22px; margin-bottom: 10px; }
+  li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10pt; }
+  th, td { border: 1px solid #cbd5e1; padding: 7px 10px; text-align: left; }
+  th { background: #f1f5f9; font-weight: 700; color: #334155; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 9.5pt; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 9pt; font-weight: 700; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .badge-rose { background: #ffe4e6; color: #9f1239; }
+  .section { page-break-inside: avoid; }
+  .page-break { page-break-before: always; }
+  .footer { text-align: center; font-size: 9pt; color: #94a3b8; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+  .info-box { background: #f0fdf4; border-left: 4px solid #059669; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .warn-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+  .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; }
+  .card h3 { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE DE COUVERTURE                                                      -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <h1>🚗 CarGuinée</h1>
+  <p class="subtitle">Plateforme guinéenne de mobilité — Location & Vente de véhicules</p>
+  <p style="font-size:12pt; color:#475569; max-width:500px;">
+    Rapport technique complet de l'application : architecture, fonctionnalités, API, base de données, interfaces et déploiement.
+  </p>
+  <p class="meta">
+    <strong>Date :</strong> 18 août 2026<br>
+    <strong>Version :</strong> 1.0.0<br>
+    <strong>Auteur :</strong> Buffy (assistant Codebuff)
+  </p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- TABLE DES MATIÈRES                                                     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>Table des matières</h1>
+<ol style="font-size:11pt; line-height:2;">
+  <li>Vue d'ensemble du projet</li>
+  <li>Architecture technique</li>
+  <li>Stack technologique</li>
+  <li>Structure du projet</li>
+  <li>Base de données (Schéma Prisma)</li>
+  <li>API Backend — Routes & Endpoints</li>
+  <li>Frontend — Pages & Composants</li>
+  <li>Système d'authentification</li>
+  <li>Gestion des véhicules</li>
+  <li>Système de réservation</li>
+  <li>Administration</li>
+  <li>Comptes de démonstration</li>
+  <li>Fonctionnalités récemment implémentées</li>
+  <li>Guide d'installation</li>
+</ol>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 1. VUE D'ENSEMBLE                                                     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>1. Vue d'ensemble du projet</h1>
+<p>
+  <strong>CarGuinée</strong> est une plateforme web de mobilité dédiée au marché guinéen (Conakry). Elle permet aux utilisateurs de :
+</p>
+<ul>
+  <li><strong>Rechercher</strong> des véhicules disponibles à la location (avec chauffeur) ou à la vente</li>
+  <li><strong>Réserver</strong> un véhicule pour une période donnée</li>
+  <li><strong>Gérer</strong> ses annonces en tant que propriétaire</li>
+  <li><strong>Administrer</strong> la plateforme (validation, gestion des comptes)</li>
+</ul>
+
+<div class="info-box">
+  <strong>三位制 de rôles :</strong> La plateforme distingue trois types d'utilisateurs — <strong>Client</strong>, <strong>Propriétaire</strong> et <strong>Administrateur</strong> — chacun disposant d'un espace dédié.
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 2. ARCHITECTURE TECHNIQUE                                              -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>2. Architecture technique</h1>
+<p>L'application suit une architecture <strong>client-serveur</strong> séparée :</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>🖥️ Backend (API REST)</h3>
+    <ul>
+      <li>Serveur Express.js (TypeScript)</li>
+      <li>Base de données PostgreSQL via Prisma ORM</li>
+      <li>Authentification JWT</li>
+      <li>Gestion des fichiers (photos multer)</li>
+      <li>Port : <span class="code">3000</span></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>🌐 Frontend (SPA)</h3>
+    <ul>
+      <li>React 18 + TypeScript</li>
+      <li>React Router v6 (navigation)</li>
+      <li>Tailwind CSS (design responsive)</li>
+      <li>Vite (build tool)</li>
+      <li>Port : <span class="code">5173</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 3. STACK TECHNOLOGIQUE                                                 -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>3. Stack technologique</h1>
+<table>
+  <tr><th>Couche</th><th>Technologie</th><th>Version / Détail</th></tr>
+  <tr><td>Frontend</td><td>React + TypeScript</td><td>React 18, TypeScript 5.x</td></tr>
+  <tr><td>Styling</td><td>Tailwind CSS</td><td>v3 — Dark/Light mode</td></tr>
+  <tr><td>Build</td><td>Vite</td><td>Développement HMR rapide</td></tr>
+  <tr><td>Routing</td><td>React Router</td><td>v6 — Routes protégées par rôle</td></tr>
+  <tr><td>Backend</td><td>Express.js</td><td>Node.js + TypeScript</td></tr>
+  <tr><td>ORM</td><td>Prisma</td><td>Client Prisma avec adapter PostgreSQL</td></tr>
+  <tr><td>Base de données</td><td>PostgreSQL</td><td>Base relationnelle</td></tr>
+  <tr><td>Auth</td><td>JWT (jsonwebtoken)</td><td>Token Bearer, 24h d'expiration</td></tr>
+  <tr><td>Mot de passe</td><td>bcrypt</td><td>bcryptjs, 12 tours de salage</td></tr>
+  <tr><td>Upload fichiers</td><td>Multer</td><td>Photos véhicules, max 8 fichiers</td></tr>
+  <tr><td>Validation</td><td>Zod</td><td>Schémas backend stricts</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 4. STRUCTURE DU PROJET                                                 -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>4. Structure du projet</h1>
+<pre style="background:#f1f5f9; padding:16px; border-radius:8px; font-size:9pt; line-height:1.6; overflow-x:auto;">
+carguinee/
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma          # Schéma de la base de données
+│   │   ├── seed.ts                # Données de démonstration
+│   │   └── update-accounts.ts     # Migration des comptes
+│   ├── src/
+│   │   ├── server.ts              # Point d'entrée Express
+│   │   ├── config/                # Config CORS, env
+│   │   ├── lib/                   # Client Prisma
+│   │   ├── middleware/            # Upload multer
+│   │   ├── modules/
+│   │   │   ├── admin/             # Routes & service admin
+│   │   │   ├── auth/              # Auth (login, register, me, update)
+│   │   │   ├── bookings/          # Réservations
+│   │   │   ├── owner-requests/    # Demandes de rôle propriétaire
+│   │   │   └── vehicles/          # CRUD véhicules + photos
+│   │   └── types/                 # Types Express
+│   ├── uploads/                   # Photos téléversées
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                # Routes React
+│   │   ├── main.tsx               # Point d'entrée
+│   │   ├── components/
+│   │   │   ├── AppShell.tsx       # Layout global (navbar + footer)
+│   │   │   ├── BookingDetailsModal.tsx
+│   │   │   ├── ConfirmDialog.tsx  # Modale de confirmation
+│   │   │   ├── StatusBadge.tsx    # Badge de statut
+│   │   │   ├── ThemeToggle.tsx    # Bascule dark/light
+│   │   │   └── VehicleGallery.tsx # Carrousel de photos
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.tsx     # État d'authentification
+│   │   │   ├── ThemeContext.tsx    # Thème dark/light
+│   │   │   └── ToastContext.tsx    # Système de notifications
+│   │   ├── lib/
+│   │   │   ├── api.ts             # Client API (fetch + JWT)
+│   │   │   ├── domain.ts          # Types métier
+│   │   │   └── roles.ts           # Utils rôles
+│   │   ├── pages/
+│   │   │   ├── AdminDashboardPage.tsx
+│   │   │   ├── OwnerDashboardPage.tsx
+│   │   │   ├── MyBookingsPage.tsx
+│   │   │   ├── VehicleDetailPage.tsx
+│   │   │   ├── VehiclesPage.tsx   # Catalogue public
+│   │   │   ├── ProfilePage.tsx
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── RegisterPage.tsx
+│   │   │   └── AccessDeniedPage.tsx
+│   │   └── types/auth.ts
+│   └── package.json
+└── database/                      # Scripts SQL éventuels
+</pre>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 5. BASE DE DONNÉES                                                     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>5. Base de données (Schéma Prisma)</h1>
+
+<h2>5.1 Enums</h2>
+<table>
+  <tr><th>Enum</th><th>Valeurs</th></tr>
+  <tr><td>UserRole</td><td>CLIENT, PROPRIETAIRE, ADMIN</td></tr>
+  <tr><td>VehicleType</td><td>CITADINE, BERLINE, SUV, QUATRE_QUATRE, UTILITAIRE, MINIBUS, CAMION, MOTO, AUTRE</td></tr>
+  <tr><td>VehicleCondition</td><td>NEUF, OCCASION</td></tr>
+  <tr><td>Commune</td><td>KALOUM, DIXINN, MATAM, RATOMA, MATOTO</td></tr>
+  <tr><td>PublicationStatus</td><td>BROUILLON, EN_ATTENTE_VALIDATION, PUBLIEE, REJETEE, ARCHIVEE</td></tr>
+  <tr><td>BookingStatus</td><td>EN_ATTENTE, CONFIRMEE, EN_COURS, TERMINEE, ANNULEE, REJETEE</td></tr>
+  <tr><td>DepositStatus</td><td>NON_REQUIS, A_PAYER, DETENU, RESTITUE, RETENU_PARTIELLEMENT, RETENU_TOTAL</td></tr>
+  <tr><td>SaleStatus</td><td>DISPONIBLE, EN_NEGOCIATION, VENDUE</td></tr>
+  <tr><td>OwnerRequestStatus</td><td>PENDING, APPROVED, REJECTED, CANCELLED</td></tr>
+</table>
+
+<h2>5.2 Modèles</h2>
+<table>
+  <tr><th>Modèle</th><th>Description</th><th>Champs clés</th></tr>
+  <tr><td><strong>User</strong></td><td>Compte utilisateur</td><td>id, phone (unique), email, passwordHash, firstName, lastName, role, isActive</td></tr>
+  <tr><td><strong>Vehicle</strong></td><td>Annonce véhicule</td><td>id, ownerId, brand, model, type, year, mileageKm, color, seats, commune, quartier, secteur, supportsRental, supportsSale, dailyRentalPriceGnf, salePriceGnf, publicationStatus</td></tr>
+  <tr><td><strong>VehiclePhoto</strong></td><td>Photo d'un véhicule</td><td>id, vehicleId, url, storageKey, sortOrder, sizeBytes</td></tr>
+  <tr><td><strong>RentalBooking</strong></td><td>Réservation de location</td><td>id, vehicleId, customerId, startDate, endDate, dailyRateGnf, totalAmountGnf, depositAmountGnf, status, notes</td></tr>
+  <tr><td><strong>SaleListing</strong></td><td>Annonce de vente</td><td>id, vehicleId, sellerId, askingPriceGnf, status</td></tr>
+  <tr><td><strong>OwnerRequest</strong></td><td>Demande de rôle propriétaire</td><td>id, userId, status, motivation, rejectionReason</td></tr>
+</table>
+
+<h2>5.3 Relations</h2>
+<ul>
+  <li><strong>User → Vehicle</strong> : Un propriétaire a plusieurs véhicules (1:N)</li>
+  <li><strong>Vehicle → VehiclePhoto</strong> : Un véhicule a 1 à 8 photos (1:N)</li>
+  <li><strong>Vehicle → RentalBooking</strong> : Un véhicule a plusieurs réservations (1:N)</li>
+  <li><strong>User → RentalBooking (Customer)</strong> : Un client a plusieurs réservations (1:N)</li>
+  <li><strong>User → OwnerRequest</strong> : Un utilisateur peut demander le rôle propriétaire</li>
+</ul>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 6. API BACKEND                                                         -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>6. API Backend — Routes & Endpoints</h1>
+
+<h2>6.1 Authentification <span class="badge badge-blue">/api/auth</span></h2>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/auth/register</td><td>Créer un compte (rôle CLIENT par défaut)</td><td>Non</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/auth/login</td><td>Connexion → retourne JWT + profil</td><td>Non</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/auth/me</td><td>Récupérer le profil de l'utilisateur connecté</td><td>Oui</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/auth/me</td><td>Modifier les informations du profil</td><td>Oui</td></tr>
+</table>
+
+<h2>6.2 Véhicules <span class="badge badge-blue">/api/vehicles</span></h2>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/vehicles</td><td>Catalogue public (filtres : type, commune, prix, recherche)</td><td>Non</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/vehicles/mine</td><td>Véhicules du propriétaire connecté</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/vehicles/:id</td><td>Détails d'un véhicule</td><td>Non (BROUILLON = propriétaire/admin)</td></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/vehicles</td><td>Créer un véhicule (brouillon)</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/vehicles/:id</td><td>Modifier un véhicule</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-rose">DELETE</span></td><td>/api/vehicles/:id</td><td>Supprimer un véhicule (brouillon/rejeté uniquement)</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/vehicles/:id/submit</td><td>Soumettre pour validation</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/vehicles/:id/archive</td><td>Archiver un véhicule</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/vehicles/:id/restore</td><td>Restaurer un véhicule archivé</td><td>Propriétaire</td></tr>
+</table>
+
+<h3>Administration des véhicules</h3>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/vehicles/admin/pending</td><td>Véhicules en attente de validation</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/vehicles/admin/:id/approve</td><td>Approuver et publier un véhicule</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/vehicles/admin/:id/reject</td><td>Rejeter avec motif</td><td>Admin</td></tr>
+</table>
+
+<h3>Photos <span class="badge badge-blue">/api/vehicles/:id/photos</span></h3>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/vehicles/:id/photos</td><td>Ajouter 1 à 8 photos (multipart)</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-rose">DELETE</span></td><td>/api/vehicles/:id/photos/:photoId</td><td>Supprimer une photo</td><td>Propriétaire</td></tr>
+</table>
+
+<h2>6.3 Réservations <span class="badge badge-blue">/api/bookings</span></h2>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/bookings</td><td>Créer une demande de réservation</td><td>Client</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/bookings/mine</td><td>Réservations du client connecté</td><td>Client</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/bookings/owner</td><td>Réservations reçues par le propriétaire</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/bookings/:id/status</td><td>Modifier le statut (confirmer/refuser/annuler)</td><td>Propriétaire/Client/Admin</td></tr>
+</table>
+
+<h2>6.4 Administration <span class="badge badge-blue">/api/admin</span></h2>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/admin/stats</td><td>Statistiques globales</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/admin/users</td><td>Liste de tous les utilisateurs</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/admin/users/:id</td><td>Détails d'un utilisateur</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/admin/users/:id/role</td><td>Changer le rôle d'un utilisateur</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/admin/users/:id/toggle-active</td><td>Activer/Désactiver un compte</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/admin/bookings</td><td>Toutes les réservations (filtre par statut)</td><td>Admin</td></tr>
+</table>
+
+<h2>6.5 Demandes propriétaire <span class="badge badge-blue">/api/owner-requests</span></h2>
+<table>
+  <tr><th>Méthode</th><th>Route</th><th>Description</th><th>Auth</th></tr>
+  <tr><td><span class="badge badge-green">POST</span></td><td>/api/owner-requests</td><td>Demander le rôle propriétaire</td><td>Client</td></tr>
+  <tr><td><span class="badge badge-blue">GET</span></td><td>/api/owner-requests/admin/pending</td><td>Demandes en attente</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/owner-requests/admin/:id/approve</td><td>Approuver</td><td>Admin</td></tr>
+  <tr><td><span class="badge badge-amber">PATCH</span></td><td>/api/owner-requests/admin/:id/reject</td><td>Rejeter avec motif</td><td>Admin</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 7. FRONTEND — PAGES                                                    -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>7. Frontend — Pages & Composants</h1>
+
+<h2>7.1 Pages publiques</h2>
+<table>
+  <tr><th>Page</th><th>Route</th><th>Description</th></tr>
+  <tr><td>Accueil</td><td>/</td><td>Page d'accueil avec présentation de la plateforme et appels à l'action</td></tr>
+  <tr><td>Catalogue</td><td>/vehicules</td><td>Liste des véhicules publiés avec filtres (type, commune, prix, recherche)</td></tr>
+  <tr><td>Détail véhicule</td><td>/vehicules/:id</td><td>Fiche complète : galerie, caractéristiques, propriétaire, réservation</td></tr>
+  <tr><td>Connexion</td><td>/connexion</td><td>Formulaire de connexion (téléphone + mot de passe)</td></tr>
+  <tr><td>Inscription</td><td>/inscription</td><td>Création de compte (prénom, nom, téléphone, email, mot de passe)</td></tr>
+  <tr><td>Accès refusé</td><td>/acces-refuse</td><td>Page d'erreur 403</td></tr>
+</table>
+
+<h2>7.2 Pages protégées (tous rôles)</h2>
+<table>
+  <tr><th>Page</th><th>Route</th><th>Description</th></tr>
+  <tr><td>Profil</td><td>/profil</td><td>Affichage et modification du profil utilisateur</td></tr>
+  <tr><td>Mes réservations</td><td>/reservations</td><td>Réservations du client ou reçues par le propriétaire (selon rôle)</td></tr>
+</table>
+
+<h2>7.3 Espace propriétaire</h2>
+<table>
+  <tr><th>Page</th><th>Route</th><th>Description</th></tr>
+  <tr><td>Dashboard propriétaire</td><td>/proprietaire</td><td>Statistiques, création/édition véhicules, gestion photos, suppression, soumission</td></tr>
+</table>
+
+<h2>7.4 Espace administrateur</h2>
+<table>
+  <tr><th>Page</th><th>Route</th><th>Description</th></tr>
+  <tr><td>Dashboard admin</td><td>/administration</td><td>3 onglets : Validations, Utilisateurs (gestion rôles/activation), Réservations globales</td></tr>
+</table>
+
+<h2>7.5 Composants réutilisables</h2>
+<table>
+  <tr><th>Composant</th><th>Description</th></tr>
+  <tr><td>AppShell</td><td>Layout global : navbar sticky (labels cliquables), footer, modale déconnexion</td></tr>
+  <tr><td>ThemeToggle</td><td>Bascule dark/light avec icônes SVG modernes (soleil/lune)</td></tr>
+  <tr><td>ConfirmDialog</td><td>Modale de confirmation personnalisable (ton emerald/rose, motif optionnel)</td></tr>
+  <tr><td>BookingDetailsModal</td><td>Modale affichant les détails complets d'une réservation</td></tr>
+  <tr><td>StatusBadge</td><td>Badge coloré pour les statuts (véhicule, réservation)</td></tr>
+  <tr><td>VehicleGallery</td><td>Carrousel de photos avec navigation et compteur</td></tr>
+  <tr><td>ProtectedRoute</td><td>Route protégée avec vérification d'authentification et de rôle</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 8. SYSTÈME D'AUTHENTIFICATION                                          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>8. Système d'authentification</h1>
+
+<h2>8.1 Flux de connexion</h2>
+<ol>
+  <li>L'utilisateur saisit son numéro de téléphone et son mot de passe</li>
+  <li>Le <strong>normalizeGuineaPhone</strong> formate le numéro au format international <span class="code">+224XXXXXXXXX</span></li>
+  <li>Le mot de passe est comparé avec le hash bcrypt en base</li>
+  <li>Un <strong>JWT</strong> est généré (durée 24h) contenant : sub (userId), phone, role</li>
+  <li>Le token est stocké en <strong>sessionStorage</strong> (clé : <span class="code">carguinee_access_token</span>)</li>
+  <li>Le profil utilisateur est envoyé au frontend</li>
+</ol>
+
+<h2>8.2 Middleware d'authentification</h2>
+<ul>
+  <li><strong>requireAuth</strong> : Vérifie la présence et la validité du JWT dans le header Authorization</li>
+  <li><strong>requireRoles(...roles)</strong> : Vérifie que le rôle de l'utilisateur fait partie des rôles autorisés</li>
+</ul>
+
+<h2>8.3 Gestion du profil</h2>
+<ul>
+  <li><strong>PATCH /api/auth/me</strong> : Permet de modifier prénom, nom, email et téléphone</li>
+  <li>Vérification de l'unicité du téléphone et de l'email</li>
+  <li>Le frontend recharge la page après modification pour synchroniser le contexte</li>
+</ul>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 9. GESTION DES VÉHICULES                                               -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>9. Gestion des véhicules</h1>
+
+<h2>9.1 Cycle de vie d'un véhicule</h2>
+<div style="text-align:center; margin:16px 0;">
+  <span class="badge badge-blue" style="font-size:10pt;">BROUILLON</span>
+  →
+  <span class="badge badge-amber" style="font-size:10pt;">EN_ATTENTE_VALIDATION</span>
+  →
+  <span class="badge badge-green" style="font-size:10pt;">PUBLIEE</span>
+  <br><br>
+  <span style="color:#94a3b8;">ou</span>
+  <br><br>
+  <span class="badge badge-amber" style="font-size:10pt;">EN_ATTENTE_VALIDATION</span>
+  →
+  <span class="badge badge-rose" style="font-size:10pt;">REJETEE</span>
+  →
+  <span class="badge badge-blue" style="font-size:10pt;">BROUILLON</span>
+</div>
+
+<ol>
+  <li><strong>Création</strong> : Le propriétaire crée un véhicule → statut BROUILLON</li>
+  <li><strong>Ajout de photos</strong> : 1 à 8 photos (JPG/PNG/WebP, max 2 Mo chacune)</li>
+  <li><strong>Soumission</strong> : Le propriétaire soumet → EN_ATTENTE_VALIDATION (vérifie qu'au moins 1 photo existe)</li>
+  <li><strong>Validation</strong> : L'admin approuve (→ PUBLIEE) ou rejette avec motif (→ REJETEE)</li>
+  <li><strong>Modification</strong> : Toute modification d'un véhicule publié le repasse en EN_ATTENTE_VALIDATION</li>
+  <li><strong>Archivage</strong> : Un propriétaire peut archiver son véhicule → ARCHIVEE</li>
+  <li><strong>Suppression</strong> : Un propriétaire ne peut supprimer que ses BROUILLON ou REJETEE (pas de réservation active)</li>
+</ol>
+
+<h2>9.2 Champs du formulaire de création</h2>
+<table>
+  <tr><th>Champ</th><th>Obligatoire</th><th>Validation</th></tr>
+  <tr><td>Marque</td><td>Oui</td><td>1-80 caractères</td></tr>
+  <tr><td>Modèle</td><td>Oui</td><td>1-80 caractères</td></tr>
+  <tr><td>Type</td><td>Oui</td><td>Enum (CITADINE, BERLINE, SUV, etc.)</td></tr>
+  <tr><td>État</td><td>Non (défaut: OCCASION)</td><td>NEUF ou OCCASION</td></tr>
+  <tr><td>Année</td><td>Non</td><td>1900 — année+1</td></tr>
+  <tr><td>Kilométrage</td><td>Non</td><td>Entier ≥ 0</td></tr>
+  <tr><td>Couleur</td><td>Non</td><td>Max 50 caractères</td></tr>
+  <tr><td>Places</td><td>Non</td><td>1-100</td></tr>
+  <tr><td>Commune</td><td>Oui</td><td>Enum guinéen</td></tr>
+  <tr><td>Quartier</td><td>Oui</td><td>1-120 caractères</td></tr>
+  <tr><td>Secteur</td><td>Oui</td><td>1-120 caractères</td></tr>
+  <tr><td>Tarif journalier (GNF)</td><td>Oui si location</td><td>Entier positif</td></tr>
+  <tr><td>Caution (GNF)</td><td>Non</td><td>Entier ≥ 0</td></tr>
+  <tr><td>Description</td><td>Non</td><td>Max 5000 caractères</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 10. SYSTÈME DE RÉSERVATION                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>10. Système de réservation</h1>
+
+<h2>10.1 Cycle de vie d'une réservation</h2>
+<table>
+  <tr><th>Statut</th><th>Description</th><th>Qui change ?</th></tr>
+  <tr><td><span class="badge badge-amber">EN_ATTENTE</span></td><td>Demande créée par le client</td><td>Client (création)</td></tr>
+  <tr><td><span class="badge badge-blue">CONFIRMEE</span></td><td>Acceptée par le propriétaire</td><td>Propriétaire</td></tr>
+  <tr><td><span class="badge badge-green">EN_COURS</span></td><td>Location en cours</td><td>Propriétaire/Admin</td></tr>
+  <tr><td><span class="badge badge-green">TERMINEE</span></td><td>Location terminée</td><td>Propriétaire/Admin</td></tr>
+  <tr><td><span class="badge badge-rose">ANNULEE</span></td><td>Annulée par le client</td><td>Client</td></tr>
+  <tr><td><span class="badge badge-rose">REJETEE</span></td><td>Refusée par le propriétaire</td><td>Propriétaire</td></tr>
+</table>
+
+<h2>10.2 Calcul du montant</h2>
+<ul>
+  <li><strong>Montant total</strong> = Nombre de jours × Tarif journalier</li>
+  <li><strong>Caution</strong> = Montant défini par le propriétaire (optionnel)</li>
+  <li><strong>Vérification de conflit</strong> : impossible de réserver sur une période chevauchant une réservation EN_ATTENTE, CONFIRMEE ou EN_COURS</li>
+</ul>
+
+<h2>10.3 Interface côté client</h2>
+<ul>
+  <li>Cartes cliquables avec aperçu des infos</li>
+  <li>Clic sur une carte → ouvre la modale de détails de la réservation</li>
+  <li>Bouton « Annuler » avec modale de confirmation + toast</li>
+</ul>
+
+<h2>10.4 Interface côté propriétaire</h2>
+<ul>
+  <li>Tableau des réservations reçues avec pagination (10 par page)</li>
+  <li>Boutons « Confirmer » / « Refuser » avec modale de confirmation</li>
+  <li>Accès rapide depuis le lien « Voir toutes les réservations »</li>
+</ul>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 11. ADMINISTRATION                                                     -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>11. Administration</h1>
+
+<h2>11.1 Tableau de bord admin (3 onglets)</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>📊 Onglet Validations</h3>
+    <ul>
+      <li>Statistiques globales (véhicules, utilisateurs, réservations)</li>
+      <li>Véhicules en attente de validation avec actions Approuver/Rejeter</li>
+      <li>Demandes de rôle propriétaire</li>
+      <li>Répartitions par statut et par rôle</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>👥 Onglet Utilisateurs</h3>
+    <ul>
+      <li>Liste de tous les utilisateurs</li>
+      <li>Modification du rôle (Client/Propriétaire/Admin)</li>
+      <li>Activation/Désactivation des comptes</li>
+      <li>Affichage du nombre de véhicules par utilisateur</li>
+    </ul>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px;">
+  <h3>📋 Onglet Réservations globales</h3>
+  <ul>
+    <li>Liste de toutes les réservations de la plateforme</li>
+    <li>Filtre par statut (En attente, Confirmée, En cours, Terminée, Annulée, Rejetée)</li>
+    <li>Affichage : véhicule, client, propriétaire, période, montant, statut</li>
+  </ul>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 12. COMPTES DE DÉMONSTRATION                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>12. Comptes de démonstration</h1>
+<table>
+  <tr><th>Rôle</th><th>Téléphone</th><th>Mot de passe</th><th>Prénom / Nom</th><th>Accès</th></tr>
+  <tr>
+    <td><span class="badge badge-rose">Admin</span></td>
+    <td><strong>620980117</strong></td>
+    <td><strong>12345678</strong></td>
+    <td>Admin Guinée</td>
+    <td>/administration — Gestion complète (utilisateurs, validation, réservations)</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-amber">Propriétaire</span></td>
+    <td><strong>620980118</strong></td>
+    <td><strong>12345678</strong></td>
+    <td>Mamadou Camara</td>
+    <td>/proprietaire — Gestion de véhicules et réservations reçues</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-green">Client</span></td>
+    <td><strong>620980119</strong></td>
+    <td><strong>12345678</strong></td>
+    <td>Ibrahima Diallo</td>
+    <td>/vehicules — Recherche, consultation, réservation</td>
+  </tr>
+</table>
+<div class="info-box">
+  <strong>Note :</strong> Les numéros de téléphone sont saisis sans le préfixe <span class="code">+224</span> dans le formulaire de connexion. Le système ajoute automatiquement le préfixe.
+</div>
+
+<h2>12.1 Données démo en base</h2>
+<p>Le seed crée <strong>6 véhicules publiés</strong> avec 8 photos chacun :</p>
+<table>
+  <tr><th>Véhicule</th><th>Type</th><th>Commune</th><th>Tarif/jour</th><th>Vente</th></tr>
+  <tr><td>Renault Clio 2021</td><td>CITADINE</td><td>DIXINN</td><td>420 000 GNF</td><td>84 000 000 GNF</td></tr>
+  <tr><td>Toyota RAV4 2022</td><td>SUV</td><td>RATOMA</td><td>850 000 GNF</td><td>198 000 000 GNF</td></tr>
+  <tr><td>Toyota Hiace 2020</td><td>MINIBUS</td><td>MATOTO</td><td>1 200 000 GNF</td><td>—</td></tr>
+  <tr><td>Nissan Navara 2019</td><td>UTILITAIRE</td><td>MATAM</td><td>950 000 GNF</td><td>146 000 000 GNF</td></tr>
+  <tr><td>Toyota Land Cruiser 2021</td><td>QUATRE_QUATRE</td><td>KALOUM</td><td>1 750 000 GNF</td><td>325 000 000 GNF</td></tr>
+  <tr><td>Kia Sportage 2023</td><td>SUV</td><td>RATOMA</td><td>950 000 GNF</td><td>—</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 13. FONCTIONNALITÉS RÉCENTES                                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<h1>13. Fonctionnalités récemment implémentées</h1>
+<table>
+  <tr><th>#</th><th>Fonctionnalité</th><th>Détail</th></tr>
+  <tr><td>1</td><td>Comptes démo personnalisés</td><td>3 comptes avec numéros et mots de passe personnalisés</td></tr>
+  <tr><td>2</td><td>Backend : gestion utilisateurs</td><td>CRUD admin (liste, rôle, activation/désactivation)</td></tr>
+  <tr><td>3</td><td>Backend : réservations globales</td><td>Endpoint admin avec filtre par statut</td></tr>
+  <tr><td>4</td><td>Backend : modification profil</td><td>PATCH /api/auth/me avec validation d'unicité</td></tr>
+  <tr><td>5</td><td>Backend : suppression véhicules</td><td>DELETE /api/vehicles/:id (brouillons/rejetés uniquement)</td></tr>
+  <tr><td>6</td><td>Admin : cartes cliquables</td><td>Les 4 cartes stats dirigent vers l'onglet correspondant</td></tr>
+  <tr><td>7</td><td>Admin : gestion des utilisateurs</td><td>Onglet dédié avec modification de rôle et activation</td></tr>
+  <tr><td>8</td><td>Admin : réservations globales</td><td>Onglet avec filtre par statut</td></tr>
+  <tr><td>9</td><td>Propriétaire : « Voir plus »</td><td>3 véhicules visibles + bouton pour tout afficher</td></tr>
+  <tr><td>10</td><td>Propriétaire : suppression</td><td>Bouton supprimer pour brouillons et rejetés</td></tr>
+  <tr><td>11</td><td>Propriétaire : toasts soumission</td><td>Vérification des conditions + toast succès/erreur</td></tr>
+  <tr><td>12</td><td>Propriétaire : « Voir » véhicule</td><td>Lien vers la page détail pour les véhicules publiés</td></tr>
+  <tr><td>13</td><td>Client : cartes cliquables réservations</td><td>Clic sur carte → modale de détails</td></tr>
+  <tr><td>14</td><td>Client : annulation avec modale</td><td>Modale confirmation + toast (plus de confirm())</td></tr>
+  <tr><td>15</td><td>Déconnexion partout</td><td>Modale confirmation + toast sur toutes les pages</td></tr>
+  <tr><td>16</td><td>Navbar labels explicites</td><td>Liens clairs : Véhicules, Mes réservations, Mon espace propriétaire, Administration</td></tr>
+  <tr><td>17</td><td>Bouton déconnexion rouge</td><td>Contour + texte rouge sur toutes les interfaces</td></tr>
+  <tr><td>18</td><td>ThemeToggle modernes</td><td>Icônes SVG soleil/lune au lieu d'emojis</td></tr>
+  <tr><td>19</td><td>VehicleDetailPage responsive</td><td>Layout mobile empilé, infos complètes, propriétaire</td></tr>
+  <tr><td>20</td><td>Détails véhicule complets</td><td>Caractéristiques, propriétaire avec contact, prix, formulaire</td></tr>
+  <tr><td>21</td><td>Profil : modification</td><td>Formulaire d'édition avec PATCH /api/auth/me</td></tr>
+  <tr><td>22</td><td>Profil : clic hors</td><td>Clic en dehors de la carte retourne à l'espace</td></tr>
+  <tr><td>23</td><td>Réservations : page adaptative</td><td>Propriétaire voit les reçues, client voit les siennes</td></tr>
+</table>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- 14. GUIDE D'INSTALLATION                                               -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>14. Guide d'installation</h1>
+
+<h2>14.1 Prérequis</h2>
+<ul>
+  <li>Node.js ≥ 18</li>
+  <li>PostgreSQL ≥ 14</li>
+  <li>npm ou npx</li>
+</ul>
+
+<h2>14.2 Configuration Backend</h2>
+<pre style="background:#f1f5f9; padding:14px; border-radius:8px; font-size:9.5pt; line-height:1.5;">
+# 1. Installer les dépendances
+cd backend && npm install
+
+# 2. Configurer la base de données
+cp .env.example .env
+# Éditer .env avec vos identifiants PostgreSQL
+
+# 3. Appliquer le schéma
+npx prisma migrate dev
+
+# 4. Charger les données démo
+npx prisma db seed
+
+# 5. Mettre à jour les comptes (nouveaux identifiants)
+npx tsx prisma/update-accounts.ts
+
+# 6. Démarrer le serveur
+npm run dev
+</pre>
+
+<h2>14.3 Configuration Frontend</h2>
+<pre style="background:#f1f5f9; padding:14px; border-radius:8px; font-size:9.5pt; line-height:1.5;">
+# 1. Installer les dépendances
+cd frontend && npm install
+
+# 2. Démarrer le serveur de développement
+npm run dev
+</pre>
+
+<h2>14.4 Variables d'environnement</h2>
+<table>
+  <tr><th>Variable</th><th>Exemple</th><th>Description</th></tr>
+  <tr><td>DATABASE_URL</td><td>postgresql://postgres:mdp@localhost:5432/carguinee</td><td>Chaîne de connexion PostgreSQL</td></tr>
+  <tr><td>JWT_SECRET</td><td>clé-secrète-de-plus-de-32-caractères</td><td>Secret pour signer les JWT</td></tr>
+  <tr><td>PORT</td><td>3000</td><td>Port du serveur API</td></tr>
+  <tr><td>CORS_ORIGIN</td><td>http://localhost:5173</td><td>Origine autorisée CORS</td></tr>
+</table>
+
+<div class="footer">
+  <p>📄 Rapport généré automatiquement — CarGuinée v1.0.0 — 18 août 2026</p>
+  <p>Plateforme guinéenne de mobilité — Location & Vente de véhicules</p>
+</div>
+
+</body>
+</html>

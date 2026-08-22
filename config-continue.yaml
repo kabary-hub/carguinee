@@ -1,0 +1,29 @@
+# Continue Configuration - Ollama + Qwen 2.5 Coder 7B
+# Fichier: C:\Users\hp\.continue\config.yaml
+
+name: My Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: Qwen 2.5 Coder 7B (Ollama)
+    provider: ollama
+    model: qwen2.5-coder:7b
+    roles:
+      - chat
+      - edit
+      - autocomplete
+
+  - name: Nomic Embed Text (Ollama)
+    provider: ollama
+    model: nomic-embed-text:latest
+    roles:
+      - embed
+
+context:
+  - provider: code
+  - provider: docs
+  - provider: folder
+  - provider: codebase
+    params:
+      nResults: 20

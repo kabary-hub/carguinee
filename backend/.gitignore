@@ -1,0 +1,14 @@
+node_modules
+.env
+dist
+
+# Prisma generated files
+src/generated/
+prisma/generated/
+
+# Uploaded files
+uploads/
+
+# Temporary files
+.tmp-*
+*.tmp

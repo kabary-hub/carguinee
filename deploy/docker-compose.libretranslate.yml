@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LibreTranslate auto-hébergé pour CarGuinée
+#
+# Usage :
+#   docker compose -f deploy/docker-compose.libretranslate.yml up -d
+#
+# Arrêt :
+#   docker compose -f deploy/docker-compose.libretranslate.yml down
+#
+# Premier lancement : ~2 Go de modèles téléchargés (peut prendre 5-10 min).
+# Accessible sur http://localhost:5000
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: carguinee-libretranslate
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Pas de clé API nécessaire en auto-hébergé
+      LT_LOAD_ONLY: "en,fr"
+      # Limiter aux modèles anglais et français (économie de RAM ~2 Go vs 30+ langues)
+    volumes:
+      - libretranslate_data:/app/libretranslate/data
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/languages')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # Premier lancement = téléchargement des modèles
+
+volumes:
+  libretranslate_data:
+    driver: local

@@ -1,0 +1,476 @@
+// ── Générateur et source de données ────────────────────────────────────────────
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums existants ────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CLIENT
+  PROPRIETAIRE
+  ADMIN
+}
+
+enum VehicleType {
+  CITADINE
+  BERLINE
+  SUV
+  QUATRE_QUATRE
+  UTILITAIRE
+  MINIBUS
+  CAMION
+  MOTO
+  AUTRE
+}
+
+enum VehicleCondition {
+  NEUF
+  OCCASION
+}
+
+enum Commune {
+  KALOUM
+  DIXINN
+  MATAM
+  RATOMA
+  MATOTO
+}
+
+enum PublicationStatus {
+  BROUILLON
+  EN_ATTENTE_VALIDATION
+  PUBLIEE
+  REJETEE
+  ARCHIVEE
+}
+
+enum SaleStatus {
+  DISPONIBLE
+  EN_NEGOCIATION
+  VENDUE
+}
+
+enum BookingStatus {
+  EN_ATTENTE
+  CONFIRMEE
+  EN_COURS
+  TERMINEE
+  ANNULEE
+  REJETEE
+}
+
+enum DepositStatus {
+  NON_REQUIS
+  A_PAYER
+  DETENU
+  RESTITUE
+  RETENU_PARTIELLEMENT
+  RETENU_TOTAL
+}
+
+enum OwnerRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// ── Nouveaux enums pour la V2 ─────────────────────────────────────────────────
+
+enum FuelType {
+  DIESEL
+  ESSENCE
+  HYBRIDE
+  ELECTRIQUE
+  GPL
+}
+
+enum Transmission {
+  MANUELLE
+  AUTOMATIQUE
+  SEMI_AUTOMATIQUE
+}
+
+enum Drivetrain {
+  AVANT
+  ARRIERE
+  INTEGRALE
+}
+
+enum DepositHeldBy {
+  PROPRIETAIRE
+  PLATEFORME
+}
+
+// ── Modèle User ────────────────────────────────────────────────────────────────
+
+model User {
+  id                String          @id @default(uuid()) @db.Uuid
+  phone             String          @unique
+  email             String?         @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  role              UserRole        @default(CLIENT)
+  isActive          Boolean         @default(true)
+  isPhoneVerified   Boolean         @default(false)
+
+  // Champs V2 : note moyenne et vérification d'identité
+  averageRating       Float?
+  identityVerified    Boolean         @default(false)
+  identityDocuments   Json?           // Stockage des chemins vers les documents
+  verificationDate    DateTime?
+  verificationMethod  String?         // "CIN", "PASSEPORT", "PERMIS"
+
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime        @updatedAt @db.Timestamptz(3)
+
+  // Relations existantes
+  vehicles          Vehicle[]
+  rentalBookings    RentalBooking[]  @relation("CustomerBookings")
+  saleListings      SaleListing[]    @relation("SellerListings")
+  ownerRequests         OwnerRequest[] @relation("ApplicantOwnerRequests")
+  reviewedOwnerRequests OwnerRequest[] @relation("ReviewedOwnerRequests")
+  reviewedVehicleValidations Vehicle[] @relation("ReviewedVehicleValidations")
+
+  // Relations V2
+  favorites             Favorite[]
+  notifications         Notification[]
+  reviewsGiven          Review[]              @relation("reviewerReviews")
+  reviewsReceived       Review[]              @relation("revieweeReviews")
+  reports               Report[]              @relation("ReportReporter")
+  sentMessages          Message[]             @relation("MessageSender")
+  receivedMessages      Message[]             @relation("MessageReceiver")
+  conversations1        Conversation[]        @relation("ConversationParticipant1")
+  conversations2        Conversation[]        @relation("ConversationParticipant2")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+// ── Modèle Vehicle (avec champs V2) ───────────────────────────────────────────
+
+model Vehicle {
+  id                  String             @id @default(uuid()) @db.Uuid
+  ownerId             String             @db.Uuid
+  owner               User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  reviewedBy          User?              @relation("ReviewedVehicleValidations", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt          DateTime?          @db.Timestamptz(3)
+  rejectionReason     String?
+  type                VehicleType
+  condition           VehicleCondition   @default(OCCASION)
+  brand               String
+  model               String
+  year                Int?
+  mileageKm           Int?
+  color               String?
+  seats               Int?
+  description         String?
+  descriptionFr       String?
+  descriptionEn       String?
+  supportsRental      Boolean            @default(false)
+  supportsSale        Boolean            @default(false)
+  dailyRentalPriceGnf Int?
+  rentalDepositGnf    Int?
+  salePriceGnf        Int?
+  publicationStatus   PublicationStatus  @default(BROUILLON)
+  commune             Commune
+  quartier            String
+  secteur             String
+  addressDetails      String?
+  latitude            Decimal?           @db.Decimal(9, 6)
+  longitude           Decimal?           @db.Decimal(9, 6)
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+  reviewedById        String?            @db.Uuid
+
+  // ── Champs techniques V2 ──
+  firstRegistrationDate    DateTime?
+  vin                      String?      @db.VarChar(17)
+  odometerGuaranteed       Boolean?
+  engineDisplacement       Float?       // Cylindrée en cm³
+  fuelType                 FuelType?
+  transmission             Transmission?
+  drivetrain               Drivetrain?
+  horsepower               Int?         // Puissance fiscale (CV)
+  equipmentList            String[]     // Liste des équipements
+  consumptionCity          Float?       // Consommation en ville (L/100km)
+  consumptionHighway       Float?       // Consommation sur route (L/100km)
+  lastMaintenanceDate      DateTime?
+  nextMaintenanceDate      DateTime?
+
+  // ── Documents administratifs V2 ──
+  carteGrisePresente              Boolean?
+  carteGriseNom                   String?
+  carteGrisePhoto                 String?
+  visiteTechniqueValideJusquA     DateTime?
+  assuranceValideJusquA           DateTime?
+  documentsDisponibles            String[]   // Liste des documents disponibles
+
+  // ── Politique de caution V2 ──
+  depositReturnPolicy   String?   // Politique de restitution (texte libre)
+  depositHeldBy         String?   // "PROPRIETAIRE" ou "PLATEFORME"
+
+  // ── Relations ──
+  photos              VehiclePhoto[]
+  rentalBookings      RentalBooking[]
+  saleListing         SaleListing?
+  conditionReport     VehicleConditionReport?
+  favorites           Favorite[]
+  reviews             Review[]
+
+  @@index([ownerId])
+  @@index([type, commune])
+  @@index([publicationStatus])
+  @@index([supportsRental, dailyRentalPriceGnf])
+  @@index([supportsSale, salePriceGnf])
+}
+
+// ── Modèle VehiclePhoto ───────────────────────────────────────────────────────
+
+model VehiclePhoto {
+  id         String   @id @default(uuid()) @db.Uuid
+  vehicleId  String   @db.Uuid
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  url        String
+  storageKey String
+  sortOrder  Int      @default(0)
+  sizeBytes  Int
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([vehicleId, sortOrder])
+}
+
+// ── Modèle RentalBooking ──────────────────────────────────────────────────────
+
+model RentalBooking {
+  id                String        @id @default(uuid()) @db.Uuid
+  vehicleId         String        @db.Uuid
+  customerId        String        @db.Uuid
+  vehicle           Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  customer          User          @relation("CustomerBookings", fields: [customerId], references: [id], onDelete: Restrict)
+  startDate         DateTime      @db.Timestamptz(3)
+  endDate           DateTime      @db.Timestamptz(3)
+  dailyRateGnf      Int
+  totalAmountGnf    Int
+  depositAmountGnf  Int           @default(0)
+  depositStatus     DepositStatus @default(NON_REQUIS)
+  status            BookingStatus @default(EN_ATTENTE)
+  notes             String?
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+
+  // Relations V2
+  review              Review?
+  rentalContract      RentalContract?
+
+  @@index([vehicleId, startDate, endDate])
+  @@index([customerId, status])
+  @@index([status])
+}
+
+// ── Modèle SaleListing ────────────────────────────────────────────────────────
+
+model SaleListing {
+  id               String           @id @default(uuid()) @db.Uuid
+  vehicleId        String           @unique @db.Uuid
+  sellerId         String           @db.Uuid
+  vehicle          Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  seller           User             @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Restrict)
+  askingPriceGnf   Int
+  status           SaleStatus       @default(DISPONIBLE)
+  publicationStatus PublicationStatus @default(BROUILLON)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([sellerId])
+  @@index([status, publicationStatus])
+}
+
+// ── Modèle OwnerRequest ───────────────────────────────────────────────────────
+
+model OwnerRequest {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @db.Uuid
+  user            User              @relation("ApplicantOwnerRequests", fields: [userId], references: [id], onDelete: Cascade)
+  status          OwnerRequestStatus @default(PENDING)
+  motivation      String?
+  rejectionReason String?
+  reviewedById    String?           @db.Uuid
+  reviewedBy      User?             @relation("ReviewedOwnerRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?         @db.Timestamptz(3)
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MODÈLES V2 ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Rapport d'état du véhicule ────────────────────────────────────────────────
+
+model VehicleConditionReport {
+  id                    String   @id @default(uuid()) @db.Uuid
+  vehicleId             String   @unique @db.Uuid
+  vehicle               Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  // Carrosserie
+  exteriorDamage        String?  // "Aucune", "Rayures légères", "Enfoncements"
+  paintQuality          String?  // "Excellent", "Bon", "Usé"
+
+  // Moteur et mécanique
+  engineCondition       String?  // "Excellent", "Bon", "À réviser"
+  transmissionCondition String?  // "Excellent", "Bon", "À réviser"
+  tireCondition         String?  // "Neufs", "Bon état", "À changer"
+  brakeCondition        String?  // "Neufs", "Bon état", "À changer"
+
+  // Intérieur
+  interiorCondition     String?  // "Excellent", "Bon", "Usé"
+  seatsCondition        String?  // "Excellent", "Bon", "Usé"
+  electronicsWorking    Boolean? // Tous les équipements électroniques fonctionnent-ils ?
+
+  // Global
+  overallRating         Int?     // Note globale de 1 à 5
+  additionalNotes       String?  // Observations complémentaires
+
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// ── Système de notation et d'avis ─────────────────────────────────────────────
+
+model Review {
+  id          String   @id @default(uuid()) @db.Uuid
+  bookingId   String   @unique @db.Uuid
+  booking     RentalBooking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  reviewerId  String   @db.Uuid
+  reviewer    User     @relation("reviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  revieweeId  String   @db.Uuid
+  reviewee    User     @relation("revieweeReviews", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  vehicleId   String?  @db.Uuid
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  rating      Int      // Note de 1 à 5
+  comment     String?  // Texte de l'avis
+  categories  Json?    // { "communication": 5, "ponctualite": 4, "proprete": 5 }
+
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([bookingId, reviewerId])
+  @@index([vehicleId])
+  @@index([revieweeId])
+}
+
+// ── Système de favoris ────────────────────────────────────────────────────────
+
+model Favorite {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleId String   @db.Uuid
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([userId, vehicleId])
+  @@index([userId])
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "BOOKING", "REVIEW", "PRICE_DROP", "SYSTEM", "MESSAGE"
+  title     String
+  message   String
+  link      String?  // Lien vers la page concernée
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+// ── Messagerie intégrée ───────────────────────────────────────────────────────
+
+model Conversation {
+  id              String     @id @default(uuid()) @db.Uuid
+  vehicleId       String?    @db.Uuid
+  participant1Id  String     @db.Uuid
+  participant1    User       @relation("ConversationParticipant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2Id  String     @db.Uuid
+  participant2    User       @relation("ConversationParticipant2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  lastMessage     String?
+  lastMessageAt   DateTime   @updatedAt
+  createdAt       DateTime   @default(now()) @db.Timestamptz(3)
+  messages        Message[]
+
+  @@unique([participant1Id, participant2Id, vehicleId])
+  @@index([participant1Id])
+  @@index([participant2Id])
+}
+
+model Message {
+  id              String       @id @default(uuid()) @db.Uuid
+  conversationId  String       @db.Uuid
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String       @db.Uuid
+  sender          User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId      String       @db.Uuid
+  receiver        User         @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  content         String
+  isRead          Boolean      @default(false)
+  deletedAt       DateTime?    @db.Timestamptz(3)
+  editedAt        DateTime?    @db.Timestamptz(3)
+  sentAt          DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([conversationId, sentAt])
+  @@index([receiverId, isRead])
+}
+
+// ── Contrats de location ──────────────────────────────────────────────────────
+
+model RentalContract {
+  id              String   @id @default(uuid()) @db.Uuid
+  bookingId       String   @unique @db.Uuid
+  booking         RentalBooking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  pdfUrl          String   // URL du PDF généré
+  customerSigned  Boolean  @default(false)
+  ownerSigned     Boolean  @default(false)
+  signedAt        DateTime?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+}
+
+// ── Signalements ──────────────────────────────────────────────────────────────
+
+model Report {
+  id          String    @id @default(uuid()) @db.Uuid
+  reporterId  String    @db.Uuid
+  reporter    User      @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetId    String    // vehicleId, userId, bookingId
+  targetType  String    // "VEHICLE", "USER", "BOOKING"
+  reason      String
+  description String?
+  status      String    @default("PENDING") // PENDING, REVIEWED, RESOLVED, DISMISSED
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  resolvedAt  DateTime?
+  resolverId  String?   // Admin qui a résolu
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([targetId, targetType])
+}
