@@ -23,6 +23,8 @@ import { authLimiter, standardLimiter } from "./lib/rate-limiter.js";
 import { logger, requestLogger } from "./lib/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { securityHeaders } from "./middleware/securityHeaders.js";
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./config/swagger.js";
 
 const app = express();
 
@@ -72,6 +74,16 @@ app.use("/api/contracts", standardLimiter, contractRouter);
 app.use("/api/reports", standardLimiter, reportRouter);
 app.use("/api/admin/reports", standardLimiter, adminReportRouter);
 app.use("/api", standardLimiter, translateRouter);
+
+// ── Swagger UI ──────────────────────────────────────────────────────────────
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: ".swagger-ui .topbar { display: none }",
+  customSiteTitle: "CarGuinée API — Documentation",
+}));
+app.get("/api/docs.json", (_request, response) => {
+  response.setHeader("Content-Type", "application/json");
+  response.send(swaggerSpec);
+});
 
 app.get("/api/health", async (_request, response) => {
   try {

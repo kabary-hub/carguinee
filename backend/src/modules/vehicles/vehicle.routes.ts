@@ -20,6 +20,42 @@ import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 export const vehicleRouter = Router();
 const idSchema = z.string().uuid();
 
+/**
+ * @swagger
+ * /api/vehicles:
+ *   get:
+ *     tags: [Vehicles]
+ *     summary: Liste publique des véhicules
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Recherche par marque/modèle
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [CITADINE, BERLINE, SUV, QUATRE_QUATRE, UTILITAIRE, MINIBUS, CAMION, MOTO] }
+ *       - in: query
+ *         name: commune
+ *         schema: { type: string, enum: [KALOUM, DIXINN, MATAM, RATOMA, MATOTO] }
+ *       - in: query
+ *         name: supportsRental
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: supportsSale
+ *         schema: { type: boolean }
+ *       - in: query
+ *         name: publicationStatus
+ *         schema: { type: string }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Liste des véhicules
+ */
 vehicleRouter.get("/", async (request, response) => {
   const parsedQuery = vehicleListQuerySchema.safeParse(request.query);
 
@@ -36,6 +72,20 @@ vehicleRouter.get("/", async (request, response) => {
   response.json({ status: "ok", data: result });
 });
 
+/**
+ * @swagger
+ * /api/vehicles/mine:
+ *   get:
+ *     tags: [Vehicles]
+ *     summary: Véhicules du propriétaire connecté
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des véhicules du propriétaire
+ *       401:
+ *         description: Non authentifié
+ */
 vehicleRouter.get("/mine", requireAuth, async (request, response) => {
   const ownerId = request.auth?.userId;
   const role = request.auth?.role;
@@ -56,6 +106,23 @@ vehicleRouter.get(
   },
 );
 
+/**
+ * @swagger
+ * /api/vehicles/{id}:
+ *   get:
+ *     tags: [Vehicles]
+ *     summary: Détails d'un véhicule
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Détails du véhicule
+ *       404:
+ *         description: Véhicule introuvable
+ */
 vehicleRouter.get("/:id", optionalAuth, async (request, response) => {
   const parsedId = idSchema.safeParse(request.params.id);
 

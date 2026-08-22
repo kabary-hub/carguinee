@@ -13,6 +13,59 @@ import { sendPasswordResetEmail } from "../../lib/email.js";
 
 export const authRouter = Router();
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Inscription d'un nouvel utilisateur
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone, password, firstName, lastName]
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+224123456789"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *                 example: "Password1"
+ *               firstName:
+ *                 type: string
+ *                 example: "Mamadou"
+ *               lastName:
+ *                 type: string
+ *                 example: "Diallo"
+ *     responses:
+ *       201:
+ *         description: Inscription réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     accessToken:
+ *                       type: string
+ *       400:
+ *         description: Données invalides
+ *       409:
+ *         description: Téléphone ou email déjà utilisé
+ */
 authRouter.post("/register", async (request, response) => {
   const parsed = registerSchema.safeParse(request.body);
 
@@ -35,6 +88,49 @@ authRouter.post("/register", async (request, response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Connexion utilisateur
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone, password]
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+224123456789"
+ *               password:
+ *                 type: string
+ *                 example: "Password1"
+ *     responses:
+ *       200:
+ *         description: Connexion réussie
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     accessToken:
+ *                       type: string
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Identifiants invalides
+ */
 authRouter.post("/login", async (request, response) => {
   const parsed = loginSchema.safeParse(request.body);
 
@@ -55,6 +151,32 @@ authRouter.post("/login", async (request, response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Profil utilisateur connecté
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profil utilisateur
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 data:
+ *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Non authentifié
+ *       404:
+ *         description: Utilisateur introuvable
+ */
 authRouter.get("/me", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -94,6 +216,35 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Changer son mot de passe
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Mot de passe modifié
+ *       400:
+ *         description: Données invalides
+ *       401:
+ *         description: Mot de passe actuel incorrect
+ */
 authRouter.post("/change-password", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -123,9 +274,36 @@ authRouter.post("/change-password", requireAuth, async (request, response) => {
   }
 });
 
-// ── Réinitialisation du mot de passe (envoi code par SMS ou email) ──────────
+// ── Réinitialisation du mot de passe (envoi code par email) ──────────────
 const forgotPasswordSchema = z.object({ phone: z.string().min(1), method: z.enum(["sms", "email"]).default("email") });
 
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Demander un code de réinitialisation
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone]
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 example: "+224123456789"
+ *               method:
+ *                 type: string
+ *                 enum: [sms, email]
+ *                 default: email
+ *     responses:
+ *       200:
+ *         description: Code envoyé
+ *       400:
+ *         description: Données invalides
+ */
 authRouter.post("/forgot-password", strictLimiter, async (request, response) => {
   const parsed = forgotPasswordSchema.safeParse(request.body);
   if (!parsed.success) {
@@ -139,7 +317,7 @@ authRouter.post("/forgot-password", strictLimiter, async (request, response) => 
       return;
     }
     const code = crypto.randomInt(100000, 999999).toString();
-    const method = parsed.data.method ?? "sms";
+    const method = parsed.data.method ?? "email";
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     // Invalider les anciens codes non utilisés pour ce téléphone
@@ -174,6 +352,32 @@ authRouter.post("/forgot-password", strictLimiter, async (request, response) => 
 // ── Vérifier le code de réinitialisation ─────────────────────────────────────
 const verifyResetCodeSchema = z.object({ phone: z.string().min(1), code: z.string().length(6) });
 
+/**
+ * @swagger
+ * /api/auth/verify-reset-code:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Vérifier le code de réinitialisation
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone, code]
+ *             properties:
+ *               phone:
+ *                 type: string
+ *               code:
+ *                 type: string
+ *                 minLength: 6
+ *                 maxLength: 6
+ *     responses:
+ *       200:
+ *         description: Code vérifié
+ *       400:
+ *         description: Code invalide ou expiré
+ */
 authRouter.post("/verify-reset-code", async (request, response) => {
   const parsed = verifyResetCodeSchema.safeParse(request.body);
   if (!parsed.success) {
@@ -200,6 +404,33 @@ authRouter.post("/verify-reset-code", async (request, response) => {
 // ── Réinitialiser le mot de passe avec le code ───────────────────────────────
 const resetPasswordSchema = z.object({ phone: z.string().min(1), code: z.string().length(6), newPassword: z.string().min(8) });
 
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Réinitialiser le mot de passe avec le code
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [phone, code, newPassword]
+ *             properties:
+ *               phone:
+ *                 type: string
+ *               code:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Mot de passe réinitialisé
+ *       400:
+ *         description: Code invalide ou expiré
+ */
 authRouter.post("/reset-password", async (request, response) => {
   const parsed = resetPasswordSchema.safeParse(request.body);
   if (!parsed.success) {
@@ -225,6 +456,38 @@ authRouter.post("/reset-password", async (request, response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/me:
+ *   patch:
+ *     tags: [Auth]
+ *     summary: Modifier son profil
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profil mis à jour
+ *       400:
+ *         description: Données invalides
+ *       409:
+ *         description: Téléphone ou email déjà utilisé
+ */
 authRouter.patch("/me", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
