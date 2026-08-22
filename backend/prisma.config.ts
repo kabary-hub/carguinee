@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
@@ -7,7 +6,7 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DATABASE_URL") || "postgresql://localhost:5432/carguinee",
     shadowDatabaseUrl: env("SHADOW_DATABASE_URL"),
   },
 });
