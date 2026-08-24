@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useAuth } from "../../contexts/AuthContext";
@@ -76,9 +77,6 @@ function canEdit(sentAt: string): boolean {
 export function MessagesPage() {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const { user } = useAuth();
-  const { t } = useTranslation();
-
-
 
   if (conversationId) {
     return (
@@ -199,14 +197,13 @@ function ChatWindow({
   currentUserId: string;
 }) {
   const { t } = useTranslation();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [initialUnreadCount, setInitialUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   // ── Edit mode ──
@@ -233,27 +230,25 @@ function ChatWindow({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenuId]);
 
-  // ── Charger les messages ──
-  const loadMessages = useCallback(async () => {
-    try {
-      const response = await apiFetch<{
+  // ── Charger les messages via React Query ──
+  const messagesQuery = useQuery({
+    queryKey: ["messages", conversationId],
+    queryFn: () =>
+      apiFetch<{
         status: string;
         data: { items: Message[]; unreadCount?: number };
-      }>(`/api/messages/conversations/${conversationId}/messages`);
-      setMessages(response.data.items);
-      if (response.data.unreadCount !== undefined) {
-        setInitialUnreadCount(response.data.unreadCount);
-      }
-    } catch {
-      // Erreur silencieuse
-    } finally {
-      setLoading(false);
-    }
-  }, [conversationId]);
+      }>(`/api/messages/conversations/${conversationId}/messages`),
+  });
 
-  useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+  const messages = messagesQuery.data?.data.items ?? [];
+  const loading = messagesQuery.isLoading;
+
+  // Capturer le unreadCount au chargement initial
+  const unreadCapturedRef = useRef(false);
+  if (!unreadCapturedRef.current && messagesQuery.data?.data.unreadCount !== undefined) {
+    setInitialUnreadCount(messagesQuery.data.data.unreadCount);
+    unreadCapturedRef.current = true;
+  }
 
   // ── Scroll automatique vers le bas ──
   useEffect(() => {
@@ -283,7 +278,10 @@ function ChatWindow({
         `/api/messages/conversations/${conversationId}/messages`,
         { method: "POST", body: JSON.stringify({ content }) },
       );
-      setMessages((prev) => [...prev, response.data]);
+      queryClient.setQueryData<{ status: string; data: { items: Message[]; unreadCount?: number } }>(
+        ["messages", conversationId],
+        (old) => old ? { ...old, data: { ...old.data, items: [...old.data.items, response.data] } } : old,
+      );
       setNewMessage("");
       // Reset textarea height
       if (textareaRef.current) {
@@ -329,8 +327,9 @@ function ChatWindow({
           body: JSON.stringify({ content }),
         },
       );
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? response.data : m)),
+      queryClient.setQueryData<{ status: string; data: { items: Message[]; unreadCount?: number } }>(
+        ["messages", conversationId],
+        (old) => old ? { ...old, data: { ...old.data, items: old.data.items.map((m) => m.id === messageId ? response.data : m) } } : old,
       );
       cancelEdit();
     } catch {
@@ -349,8 +348,9 @@ function ChatWindow({
         `/api/messages/messages/${messageId}`,
         { method: "DELETE" },
       );
-      setMessages((prev) =>
-        prev.map((m) => (m.id === messageId ? response.data : m)),
+      queryClient.setQueryData<{ status: string; data: { items: Message[]; unreadCount?: number } }>(
+        ["messages", conversationId],
+        (old) => old ? { ...old, data: { ...old.data, items: old.data.items.map((m) => m.id === messageId ? response.data : m) } } : old,
       );
       showToast("Message supprimé.", "success");
     } catch {

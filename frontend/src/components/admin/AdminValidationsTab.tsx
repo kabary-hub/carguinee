@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "../StatusBadge";
 import { VehicleStatusModal } from "./VehicleStatusModal";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
-import type { AdminStats, Vehicle, OwnerRequest, PendingAction } from "./adminTypes";
-import { formatGnf } from "../../lib/domain";
+import type { AdminStats, OwnerRequest, PendingAction } from "./adminTypes";
+import { formatGnf, type Vehicle } from "../../lib/domain";
 
 type Props = {
   stats: AdminStats;
@@ -55,24 +56,18 @@ export function AdminValidationsTab({
   const { t } = useTranslation();
   const { showToast } = useToast();
   const [selectedVehicleStatus, setSelectedVehicleStatus] = useState<string | null>(null);
-  const [adminFavorites, setAdminFavorites] = useState<Record<string, boolean>>({});
-  const totalBookings = Object.values(stats.bookingsByStatus).reduce((s, v) => s + v, 0);
 
   // ── Charger le statut favori pour les véhicules en attente ──
-  const loadFavorites = useCallback(async () => {
-    if (pendingVehicles.length === 0) return;
-    try {
-      const ids = pendingVehicles.map((v) => v.id).join(",");
-      const res = await apiFetch<{ status: string; data: Record<string, boolean> }>(
-        `/api/favorites/check-batch?ids=${ids}`,
-      );
-      setAdminFavorites(res.data);
-    } catch {
-      // silencieux — pas bloquant
-    }
-  }, [pendingVehicles]);
-
-  useEffect(() => { void loadFavorites(); }, [loadFavorites]);
+  const vehicleIds = pendingVehicles.map((v) => v.id).join(",");
+  const { data: adminFavorites = {} } = useQuery({
+    queryKey: ["admin", "favorites", vehicleIds],
+    queryFn: () =>
+      apiFetch<{ status: string; data: Record<string, boolean> }>(
+        `/api/favorites/check-batch?ids=${vehicleIds}`,
+      ).then((res) => res.data),
+    enabled: vehicleIds.length > 0,
+    staleTime: 30_000,
+  });
 
   // ── Toggle favori admin ──
   const toggleFavorite = useCallback(async (vehicleId: string) => {

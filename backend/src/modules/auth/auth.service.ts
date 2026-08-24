@@ -13,6 +13,7 @@ export function toPublicUser(user: {
   lastName: string;
   role: string;
   isActive: boolean;
+  isBanned?: boolean;
 }) {
   return {
     id: user.id,
@@ -22,6 +23,7 @@ export function toPublicUser(user: {
     lastName: user.lastName,
     role: user.role,
     isActive: user.isActive,
+    isBanned: user.isBanned ?? false,
   };
 }
 
@@ -82,6 +84,20 @@ export async function register(input: RegisterInput) {
   };
 }
 
+export class AccountDeactivatedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AccountDeactivatedError";
+  }
+}
+
+export class AccountBannedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AccountBannedError";
+  }
+}
+
 export async function login(input: LoginInput) {
   const phone = normalizeGuineaPhone(input.phone);
 
@@ -89,8 +105,16 @@ export async function login(input: LoginInput) {
     where: { phone },
   });
 
-  if (!user || !user.isActive) {
+  if (!user) {
     throw new Error("Identifiants invalides.");
+  }
+
+  if (user.isBanned) {
+    throw new AccountBannedError("Votre compte a été suspendu. Veuillez contacter le support.");
+  }
+
+  if (!user.isActive) {
+    throw new AccountDeactivatedError("Votre compte a été désactivé.");
   }
 
   const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);

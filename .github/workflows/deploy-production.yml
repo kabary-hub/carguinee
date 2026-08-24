@@ -1,0 +1,212 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rollback:
+        description: "Rollback to previous version"
+        type: boolean
+        default: false
+      version:
+        description: "Tag to deploy (leave empty for latest)"
+        type: string
+        required: false
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  PROD_HOST: ${{ secrets.PROD_HOST }}
+  PROD_USER: ${{ secrets.PROD_USER }}
+  PROD_PATH: /var/www/carguinee
+  BLUE_PORT: 3001
+  GREEN_PORT: 3002
+
+jobs:
+  # ── Rollback shortcut ─────────────────────────────────────────────────────
+  rollback:
+    name: Rollback Production
+    if: ${{ github.event.inputs.rollback == 'true' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ env.PROD_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Execute rollback
+        run: |
+          ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
+            "cd ${{ env.PROD_PATH }} && \
+             ./scripts/rollback.sh"
+
+      - name: Health check after rollback
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://carguinee.com/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Rollback successful, production is healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "❌ Health check failed after rollback"
+          exit 1
+
+  # ── Quality Gate ──────────────────────────────────────────────────────────
+  quality:
+    name: Quality Gate
+    if: ${{ github.event.inputs.rollback != 'true' }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: carguinee_ci
+          POSTGRES_PASSWORD: carguinee_ci
+          POSTGRES_DB: carguinee_prod_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd="pg_isready -U carguinee_ci"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://carguinee_ci:carguinee_ci@localhost:5432/carguinee_prod_test
+      JWT_SECRET: prod-test-secret-key-that-is-at-least-32-chars
+      ENCRYPTION_KEY: aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344
+      RESEND_API_KEY: re_test_placeholder
+      CORS_ORIGIN: https://carguinee.com
+      PORT: 3000
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+      - run: cd backend && npm ci && npx prisma generate && npx prisma db push --skip-generate && npx tsc --noEmit && npm test && npx tsc
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: cd frontend && npm ci && npx tsc -b && npm run lint && npm test && npx vite build
+
+  # ── Blue-Green Deploy ─────────────────────────────────────────────────────
+  deploy:
+    name: Blue-Green Deploy
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.version || github.sha }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ env.PROD_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Determine active slot
+        id: slot
+        run: |
+          ACTIVE=$(ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
+            "cat ${{ env.PROD_PATH }}/active-slot.txt 2>/dev/null || echo 'blue'")
+          if [ "$ACTIVE" = "blue" ]; then
+            echo "active=blue" >> $GITHUB_OUTPUT
+            echo "deploy=green" >> $GITHUB_OUTPUT
+            echo "port=${{ env.GREEN_PORT }}" >> $GITHUB_OUTPUT
+          else
+            echo "active=green" >> $GITHUB_OUTPUT
+            echo "deploy=blue" >> $GITHUB_OUTPUT
+            echo "port=${{ env.BLUE_PORT }}" >> $GITHUB_OUTPUT
+          fi
+          echo "Deploying to: ${{ steps.slot.outputs.deploy }} (port ${{ steps.slot.outputs.port }})"
+
+      - name: Push code to inactive slot
+        run: |
+          ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
+            "mkdir -p ${{ env.PROD_PATH }}/${{ steps.slot.outputs.deploy }}"
+          rsync -avz --delete \
+            --exclude 'node_modules' --exclude '.git' --exclude '*.tar.gz' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ ${{ env.PROD_USER }}@${{ env.PROD_HOST }}:${{ env.PROD_PATH }}/${{ steps.slot.outputs.deploy }}/
+
+      - name: Install, migrate, build in inactive slot
+        run: |
+          ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
+            "cd ${{ env.PROD_PATH }}/${{ steps.slot.outputs.deploy }} && \
+             echo '── Backend install ──' && \
+             cd backend && npm ci --omit=dev && \
+             echo '── Migrations ──' && \
+             npx prisma migrate deploy && \
+             npx prisma generate && \
+             echo '── Build backend ──' && \
+             npx tsc && \
+             echo '── Frontend install ──' && \
+             cd ../frontend && npm ci --omit=dev && \
+             echo '── Build frontend ──' && \
+             npx vite build && \
+             echo '── Start in inactive slot ──' && \
+             cd .. && \
+             pm2 start ecosystem.config.cjs --name carguinee-${{ steps.slot.outputs.deploy }} \
+               --env production --cwd . && \
+             echo '✅ Build complete in ${{ steps.slot.outputs.deploy }}'"
+
+      - name: Smoke test inactive slot
+        run: |
+          sleep 5
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:${{ steps.slot.outputs.port }}/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Inactive slot is healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "❌ Smoke test failed — aborting switch"
+          exit 1
+
+      - name: Switch traffic to new slot
+        run: |
+          ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
+            "cd ${{ env.PROD_PATH }} && \
+             echo '${{ steps.slot.outputs.deploy }}' > active-slot.txt && \
+             # Update nginx upstream to point to new port
+             sudo sed -i 's/server 127.0.0.1:[0-9]*/server 127.0.0.1:${{ steps.slot.outputs.port }}/g' \
+               /etc/nginx/sites-available/carguinee-api.conf && \
+             sudo nginx -t && \
+             sudo systemctl reload nginx && \
+             # Stop old slot
+             pm2 stop carguinee-${{ steps.slot.outputs.active }} 2>/dev/null || true && \
+             echo '✅ Traffic switched to ${{ steps.slot.outputs.deploy }}'"
+
+      - name: Post-deploy health check
+        run: |
+          for i in $(seq 1 15); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://carguinee.com/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Production is healthy after switch"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "❌ Post-deploy health check failed — AUTO-ROLLBACK"
+          # Auto-rollback
+          ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
+            "cd ${{ env.PROD_PATH }} && ./scripts/rollback.sh"
+          exit 1
+
+      - name: Tag successful deploy
+        if: success()
+        run: |
+          DEPLOY_TAG="deploy-$(date +%Y%m%d-%H%M%S)"
+          git tag "$DEPLOY_TAG"
+          git push origin "$DEPLOY_TAG"

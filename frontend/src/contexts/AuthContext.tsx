@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = getStoredToken();
 
     if (!token) {
-      setIsLoading(false);
+      setIsLoading(false); // eslint-disable-line react-hooks/set-state-in-effect -- init auth on mount
       return;
     }
 
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearStoredToken();
         setUser(null);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => setIsLoading(false)); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
   async function login(input: LoginInput): Promise<AuthUser> {
@@ -84,6 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
+    // Appeler l'API pour clear le cookie httpOnly
+    fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {}); // Best-effort
     clearStoredToken();
     setUser(null);
   }

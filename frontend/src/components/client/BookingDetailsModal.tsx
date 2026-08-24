@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { Booking } from "../../lib/domain";
-import { formatDate, formatGnf } from "../../lib/domain";
+import { formatDate, formatGnf, type Booking } from "../../lib/domain";
 import { StatusBadge } from "../StatusBadge";
 
 type BookingDetailsModalProps = {

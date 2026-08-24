@@ -20,6 +20,10 @@ export function ProtectedRoute({ allowedRoles }: { allowedRoles?: UserRole[] }) 
     return <Navigate to="/connexion" replace state={{ from: location.pathname }} />;
   }
 
+  if (user.isBanned) {
+    return <Navigate to="/connexion" replace state={{ banned: true }} />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/acces-refuse" replace />;
   }

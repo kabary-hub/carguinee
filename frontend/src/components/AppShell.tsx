@@ -9,6 +9,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { useState, useEffect, useRef } from "react";
 import { apiFetch } from "../lib/api";
 import type { ApiResponse } from "../lib/domain";
+import { ChatbotWidget } from "./chatbot/ChatbotWidget";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -268,6 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link to="/conditions-generales" className="hover:text-emerald-600 dark:hover:text-emerald-400">CGU</Link>
             <Link to="/mentions-legales" className="hover:text-emerald-600 dark:hover:text-emerald-400">Mentions légales</Link>
             <Link to="/politique-confidentialite" className="hover:text-emerald-600 dark:hover:text-emerald-400">Politique de confidentialité</Link>
+            <Link to="/registre-traitements" className="hover:text-emerald-600 dark:hover:text-emerald-400">Registre des traitements</Link>
           </div>
           <p className="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
             {t("home.footer")}
@@ -284,6 +286,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onConfirm={handleLogout}
         onCancel={() => setShowLogoutConfirm(false)}
       />
+
+      <ChatbotWidget />
     </div>
   );
 }

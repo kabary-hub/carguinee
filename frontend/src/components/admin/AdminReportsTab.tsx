@@ -8,7 +8,7 @@ import { ReportDetailsModal } from "./ReportDetailsModal";
 type Props = {
   reports: ReportItem[];
   setReports: React.Dispatch<React.SetStateAction<ReportItem[]>>;
-  showToast: (msg: string, type?: string) => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
 };
 
 /** Action de suppression en attente de confirmation */

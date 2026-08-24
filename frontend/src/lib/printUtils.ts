@@ -40,7 +40,7 @@ function buildPrintPage(title: string, bodyHtml: string): string {
   <div class="logo">Car<span>Guinée</span></div>
   ${bodyHtml}
   <div class="footer">
-    Imprimé le ${new Date().toLocaleDateString("fr-FR", { dateStyle: "full", timeStyle: "short" })} — CarGuinée Admin
+    Imprimé le ${new Date().toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "short" })} — CarGuinée Admin
   </div>
 </body>
 </html>`;
@@ -48,12 +48,18 @@ function buildPrintPage(title: string, bodyHtml: string): string {
 
 /** Ouvre une fenêtre d'impression avec le contenu généré */
 function openPrintWindow(title: string, bodyHtml: string) {
-  const win = window.open("", "_blank", "width=900,height=700");
-  if (!win) return;
-  win.document.write(buildPrintPage(title, bodyHtml));
-  win.document.close();
-  // Laisser le temps au navigateur de渲染 le contenu
-  setTimeout(() => win.print(), 400);
+  const html = buildPrintPage(title, bodyHtml);
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "width=900,height=700");
+  if (!win) {
+    URL.revokeObjectURL(url);
+    return;
+  }
+  win.onload = () => {
+    win.print();
+    URL.revokeObjectURL(url);
+  };
 }
 
 // ── Badge helpers ────────────────────────────────────────────────────────────

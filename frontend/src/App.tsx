@@ -18,12 +18,15 @@ const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage")
 const AdminChatsPage = lazy(() => import("./pages/admin/AdminChatsPage").then((m) => ({ default: m.AdminChatsPage })));
 const AdminFavoritesPage = lazy(() => import("./pages/admin/AdminFavoritesPage").then((m) => ({ default: m.AdminFavoritesPage })));
 const AdminReviewsPage = lazy(() => import("./pages/admin/AdminReviewsPage").then((m) => ({ default: m.AdminReviewsPage })));
+const AdminModerationPage = lazy(() => import("./pages/admin/AdminModerationPage").then((m) => ({ default: m.AdminModerationPage })));
 const FavoritesPage = lazy(() => import("./pages/client/FavoritesPage").then((m) => ({ default: m.FavoritesPage })));
 const NotificationsPage = lazy(() => import("./pages/client/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const MessagesPage = lazy(() => import("./pages/client/MessagesPage").then((m) => ({ default: m.MessagesPage })));
 const ConditionsGeneralesPage = lazy(() => import("./pages/legal/ConditionsGeneralesPage").then((m) => ({ default: m.ConditionsGeneralesPage })));
 const MentionsLegalesPage = lazy(() => import("./pages/legal/MentionsLegalesPage").then((m) => ({ default: m.MentionsLegalesPage })));
 const PolitiqueConfidentialitePage = lazy(() => import("./pages/legal/PolitiqueConfidentialitePage").then((m) => ({ default: m.PolitiqueConfidentialitePage })));
+const RegistreTraitementsPage = lazy(() => import("./pages/legal/RegistreTraitementsPage").then((m) => ({ default: m.RegistreTraitementsPage })));
+const ReferralPage = lazy(() => import("./pages/client/ReferralPage").then((m) => ({ default: m.ReferralPage })));
 
 // ── Fallback de chargement ──────────────────────────────────────────────────
 function PageFallback() {
@@ -61,6 +64,7 @@ function App() {
           <Route path="/administration/chats" element={<AdminChatsPage />} />
           <Route path="/administration/favoris" element={<AdminFavoritesPage />} />
           <Route path="/administration/avis" element={<AdminReviewsPage />} />
+          <Route path="/administration/moderation" element={<AdminModerationPage />} />
         </Route>
         {/* ── Pages V2 : Favoris, Notifications, Messages ── */}
         <Route element={<ProtectedRoute />}>
@@ -68,11 +72,13 @@ function App() {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/messages/:conversationId" element={<MessagesPage />} />
+          <Route path="/parrainage" element={<ReferralPage />} />
         </Route>
         {/* ── Pages légales ── */}
         <Route path="/conditions-generales" element={<ConditionsGeneralesPage />} />
         <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
         <Route path="/politique-confidentialite" element={<PolitiqueConfidentialitePage />} />
+        <Route path="/registre-traitements" element={<RegistreTraitementsPage />} />
       </Routes>
     </Suspense>
   );

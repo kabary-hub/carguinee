@@ -7,18 +7,32 @@ function isAuthRole(value: unknown): value is AuthRole {
   return value === "CLIENT" || value === "PROPRIETAIRE" || value === "ADMIN";
 }
 
-export function requireAuth(request: Request, response: Response, next: NextFunction) {
+/**
+ * Extrait le token JWT depuis le header Authorization OU le cookie auth_token.
+ */
+function extractToken(request: Request): string | null {
   const authorization = request.header("authorization");
+  if (authorization?.startsWith("Bearer ")) {
+    return authorization.slice("Bearer ".length).trim();
+  }
+  // Fallback : cookie httpOnly
+  const cookies = (request as any).cookies;
+  if (cookies?.auth_token) {
+    return cookies.auth_token;
+  }
+  return null;
+}
 
-  if (!authorization?.startsWith("Bearer ")) {
+export function requireAuth(request: Request, response: Response, next: NextFunction) {
+  const token = extractToken(request);
+
+  if (!token) {
     response.status(401).json({
       status: "error",
-      message: "Jeton d’authentification manquant.",
+      message: "Jeton d'authentification manquant.",
     });
     return;
   }
-
-  const token = authorization.slice("Bearer ".length).trim();
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET);
@@ -26,7 +40,7 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
     if (typeof payload === "string" || !payload.sub || !isAuthRole(payload.role)) {
       response.status(401).json({
         status: "error",
-        message: "Jeton d’authentification invalide.",
+        message: "Jeton d'authentification invalide.",
       });
       return;
     }
@@ -42,20 +56,18 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
   } catch {
     response.status(401).json({
       status: "error",
-      message: "Jeton d’authentification invalide ou expiré.",
+      message: "Jeton d'authentification invalide ou expiré.",
     });
   }
 }
 
 export function optionalAuth(request: Request, _response: Response, next: NextFunction) {
-  const authorization = request.header("authorization");
+  const token = extractToken(request);
 
-  if (!authorization?.startsWith("Bearer ")) {
+  if (!token) {
     next();
     return;
   }
-
-  const token = authorization.slice("Bearer ".length).trim();
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET);
@@ -87,7 +99,7 @@ export function requireRoles(...allowedRoles: AuthRole[]) {
     if (!allowedRoles.includes(request.auth.role)) {
       response.status(403).json({
         status: "error",
-        message: "Vous n’avez pas les droits nécessaires.",
+        message: "Vous n'avez pas les droits nécessaires.",
       });
       return;
     }

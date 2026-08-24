@@ -1,15 +1,14 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LanguageSwitcher } from "../../components/LanguageSwitcher";
-import { PasswordInput } from "../../components/PasswordInput";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { PasswordManager } from "../../components/profile/PasswordManager";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
-import { getHomeRouteForRole } from "../../lib/roles"
+import { getHomeRouteForRole } from "../../lib/roles";
 
 export function ProfilePage() {
   const { user, logout } = useAuth();
@@ -17,7 +16,9 @@ export function ProfilePage() {
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
@@ -27,19 +28,43 @@ export function ProfilePage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // ── Gestion du mot de passe ──
-  const [passwordMode, setPasswordMode] = useState<null | "change" | "reset">(null);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-    resetCode: "",
-  });
-  const [passwordError, setPasswordError] = useState("");
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [resetStep, setResetStep] = useState<"method" | "email" | "code" | "new">("method");
-  const [resetMethod, setResetMethod] = useState<"sms" | "email">("sms");
+  if (!user) return null;
 
+  // ── RGPD : Désactivation de compte ──
+  const handleDeactivate = async () => {
+    try {
+      await apiFetch("/api/auth/deactivate", { method: "POST" });
+      showToast(t("rgpd.deactivateSuccess"));
+      logout();
+      navigate("/connexion", { replace: true });
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t("rgpd.deactivateError"), "error");
+    } finally {
+      setShowDeactivateConfirm(false);
+    }
+  };
+
+  // ── RGPD : Export des données ──
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const response = await apiFetch<Blob>("/api/auth/export-data", {});
+      const blob = new Blob([JSON.stringify(response)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "carguinee-mes-donnees.json";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      showToast(t("rgpd.exportSuccess"));
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t("rgpd.exportError"), "error");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -65,10 +90,8 @@ export function ProfilePage() {
           phone: formData.phone,
         }),
       });
-      // Mettre à jour le contexte d'auth en rechargeant la page
       showToast(t("profile.success"));
       setIsEditing(false);
-      // Recharger la page pour que le contexte prenne en compte les nouvelles données
       window.location.reload();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("profile.updateImpossible"));
@@ -82,7 +105,6 @@ export function ProfilePage() {
     <main
       className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 dark:bg-slate-950"
       onClick={(e) => {
-        // Cliquer en dehors de la carte profil pour fermer
         if (e.target === e.currentTarget) {
           navigate(getHomeRouteForRole(user.role), { replace: true });
         }
@@ -169,218 +191,8 @@ export function ProfilePage() {
               </div>
 
               {/* ── Section Gestion du mot de passe ── */}
-              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-                <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">🔒 {t("profile.passwordManagement")}</h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("profile.passwordManagementDesc")}</p>
-
-                {!passwordMode && (
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <button
-                      onClick={() => { setPasswordMode("change"); setPasswordError(""); setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "", resetCode: "" }); }}
-                      className="rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-700"
-                    >
-                      {t("profile.changePassword")}
-                    </button>
-                    <button
-                      onClick={() => { setPasswordMode("reset"); setPasswordError(""); setResetStep("method"); setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "", resetCode: "" }); }}
-                      className="rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                    >
-                      {t("profile.forgotPassword")}
-                    </button>
-                  </div>
-                )}
-
-                {/* ── Mode Modifier le mot de passe ── */}
-                {passwordMode === "change" && (
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    setPasswordError("");
-                    if (passwordData.newPassword !== passwordData.confirmPassword) {
-                      setPasswordError(t("auth.register.errors.passwordsDontMatch"));
-                      return;
-                    }
-                    if (passwordData.newPassword.length < 8) {
-                      setPasswordError(t("auth.register.errors.passwordTooShort"));
-                      return;
-                    }
-                    setPasswordSaving(true);
-                    try {
-                      await apiFetch("/api/auth/change-password", {
-                        method: "POST",
-                        body: JSON.stringify({
-                          currentPassword: passwordData.currentPassword,
-                          newPassword: passwordData.newPassword,
-                        }),
-                      });
-                      showToast(t("profile.passwordChanged"));
-                      setPasswordMode(null);
-                    } catch (err) {
-                      setPasswordError(err instanceof Error ? err.message : t("profile.passwordChangeError"));
-                    } finally {
-                      setPasswordSaving(false);
-                    }
-                  }} className="mt-4 space-y-4">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t("profile.changePasswordTitle")}</p>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {t("profile.currentPassword")}
-                      <PasswordInput required value={passwordData.currentPassword} onChange={(val) => setPasswordData((c) => ({ ...c, currentPassword: val }))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                    </label>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {t("profile.newPassword")}
-                      <PasswordInput required minLength={8} value={passwordData.newPassword} onChange={(val) => setPasswordData((c) => ({ ...c, newPassword: val }))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                    </label>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {t("profile.confirmNewPassword")}
-                      <PasswordInput required minLength={8} value={passwordData.confirmPassword} onChange={(val) => setPasswordData((c) => ({ ...c, confirmPassword: val }))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                    </label>
-                    {passwordError && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300">{passwordError}</p>}
-                    <div className="flex gap-3">
-                      <button type="submit" disabled={passwordSaving} className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60">
-                        {passwordSaving ? t("profile.saving") : t("profile.validate")}
-                      </button>
-                      <button type="button" onClick={() => setPasswordMode(null)} className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                        {t("profile.cancel")}
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* ── Mode Réinitialiser le mot de passe ── */}
-                {passwordMode === "reset" && (
-                  <div className="mt-4 space-y-4">
-                    {resetStep === "method" && (
-                      <div className="space-y-4">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t("profile.resetPasswordTitle")}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{t("profile.chooseResetMethod")}</p>
-                        <div className="flex flex-col gap-3">
-                          <button type="button" onClick={() => { setResetMethod("sms"); setResetStep("email"); }} className="flex items-center gap-3 rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-                            <span className="text-xl">📱</span>
-                            <div className="text-left"><p className="font-bold">SMS</p><p className="text-xs text-slate-500 dark:text-slate-400">{user.phone}</p></div>
-                          </button>
-                          {user.email && (
-                            <button type="button" onClick={() => { setResetMethod("email"); setResetStep("email"); }} className="flex items-center gap-3 rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-                              <span className="text-xl">📧</span>
-                              <div className="text-left"><p className="font-bold">Email</p><p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p></div>
-                            </button>
-                          )}
-                        </div>
-                        <button type="button" onClick={() => setPasswordMode(null)} className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                          {t("profile.cancel")}
-                        </button>
-                      </div>
-                    )}
-
-                    {resetStep === "email" && (
-                      <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        setPasswordError("");
-                        setPasswordSaving(true);
-                        try {
-                          await apiFetch("/api/auth/forgot-password", {
-                            method: "POST",
-                            body: JSON.stringify({ phone: user.phone, method: resetMethod }),
-                          });
-                          showToast(t("profile.resetCodeSent"));
-                          setResetStep("code");
-                        } catch (err) {
-                          setPasswordError(err instanceof Error ? err.message : t("profile.resetCodeError"));
-                        } finally {
-                          setPasswordSaving(false);
-                        }
-                      }} className="space-y-4">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t("profile.resetPasswordTitle")}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{t("profile.resetPasswordDesc")}</p>
-                        <div className="flex gap-3">
-                          <button type="submit" disabled={passwordSaving} className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60">
-                            {passwordSaving ? t("profile.sending") : t("profile.sendCode")}
-                          </button>
-                          <button type="button" onClick={() => setResetStep("method")} className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                            {t("profile.cancel")}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-
-                    {resetStep === "code" && (
-                      <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        setPasswordError("");
-                        try {
-                          await apiFetch("/api/auth/verify-reset-code", {
-                            method: "POST",
-                            body: JSON.stringify({ phone: user.phone, code: passwordData.resetCode }),
-                          });
-                          setResetStep("new");
-                        } catch (err) {
-                          setPasswordError(err instanceof Error ? err.message : t("profile.invalidCode"));
-                        }
-                      }} className="space-y-4">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t("profile.enterResetCode")}</p>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                          {t("profile.resetCode")}
-                          <input type="text" required value={passwordData.resetCode} onChange={(e) => setPasswordData((c) => ({ ...c, resetCode: e.target.value }))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" placeholder="123456" />
-                        </label>
-                        {passwordError && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300">{passwordError}</p>}
-                        <div className="flex gap-3">
-                          <button type="submit" className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700">
-                            {t("profile.validate")}
-                          </button>
-                          <button type="button" onClick={() => setPasswordMode(null)} className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                            {t("profile.cancel")}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-
-                    {resetStep === "new" && (
-                      <form onSubmit={async (e) => {
-                        e.preventDefault();
-                        setPasswordError("");
-                        if (passwordData.newPassword !== passwordData.confirmPassword) {
-                          setPasswordError(t("auth.register.errors.passwordsDontMatch"));
-                          return;
-                        }
-                        if (passwordData.newPassword.length < 8) {
-                          setPasswordError(t("auth.register.errors.passwordTooShort"));
-                          return;
-                        }
-                        setPasswordSaving(true);
-                        try {
-                          await apiFetch("/api/auth/reset-password", {
-                            method: "POST",
-                            body: JSON.stringify({ phone: user.phone, code: passwordData.resetCode, newPassword: passwordData.newPassword }),
-                          });
-                          showToast(t("profile.passwordResetSuccess"));
-                          setPasswordMode(null);
-                          setResetStep("email");
-                        } catch (err) {
-                          setPasswordError(err instanceof Error ? err.message : t("profile.passwordResetError"));
-                        } finally {
-                          setPasswordSaving(false);
-                        }
-                      }} className="space-y-4">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t("profile.setNewPassword")}</p>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                          {t("profile.newPassword")}
-                          <PasswordInput required minLength={8} value={passwordData.newPassword} onChange={(val) => setPasswordData((c) => ({ ...c, newPassword: val }))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                        </label>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                          {t("profile.confirmNewPassword")}
-                          <PasswordInput required minLength={8} value={passwordData.confirmPassword} onChange={(val) => setPasswordData((c) => ({ ...c, confirmPassword: val }))} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200" />
-                        </label>
-                        {passwordError && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300">{passwordError}</p>}
-                        <div className="flex gap-3">
-                          <button type="submit" disabled={passwordSaving} className="rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60">
-                            {passwordSaving ? t("profile.saving") : t("profile.validate")}
-                          </button>
-                          <button type="button" onClick={() => { setPasswordMode(null); setResetStep("method"); }} className="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300">
-                            {t("profile.cancel")}
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </div>
-                )}
+              <div className="mt-8">
+                <PasswordManager userPhone={user.phone} userEmail={user.email} />
               </div>
             </>
           ) : (
@@ -457,8 +269,47 @@ export function ProfilePage() {
               </div>
             </form>
           )}
+
+          {/* ── Section RGPD : Droits de l'utilisateur ── */}
+          {!isEditing && (
+            <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-sm sm:p-6 dark:border-amber-800/40 dark:bg-amber-500/5">
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">🛡️ {t("rgpd.title")}</h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("rgpd.description")}</p>
+
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={handleExportData}
+                  disabled={exporting}
+                  className="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-3 font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                >
+                  {exporting ? t("rgpd.exporting") : t("rgpd.exportData")}
+                </button>
+
+                <button
+                  onClick={() => setShowDeactivateConfirm(true)}
+                  className="rounded-xl border border-red-300 px-5 py-3 font-semibold text-red-600 transition hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-500/15"
+                >
+                  {t("rgpd.deactivateAccount")}
+                </button>
+              </div>
+
+              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                {t("rgpd.deactivateNote")}
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeactivateConfirm}
+        title={t("rgpd.deactivateConfirmTitle")}
+        message={t("rgpd.deactivateConfirmMessage")}
+        confirmLabel={t("rgpd.deactivateConfirmButton")}
+        tone="rose"
+        onConfirm={handleDeactivate}
+        onCancel={() => setShowDeactivateConfirm(false)}
+      />
 
       <ConfirmDialog
         open={showLogoutConfirm}

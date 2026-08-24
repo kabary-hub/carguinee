@@ -118,6 +118,7 @@ model User {
   lastName          String
   role              UserRole        @default(CLIENT)
   isActive          Boolean         @default(true)
+  isBanned          Boolean         @default(false)
   isPhoneVerified   Boolean         @default(false)
 
   // Champs V2 : note moyenne et vérification d'identité
@@ -137,6 +138,8 @@ model User {
   ownerRequests         OwnerRequest[] @relation("ApplicantOwnerRequests")
   reviewedOwnerRequests OwnerRequest[] @relation("ReviewedOwnerRequests")
   reviewedVehicleValidations Vehicle[] @relation("ReviewedVehicleValidations")
+  reactivationRequests       ReactivationRequest[] @relation("ApplicantReactivationRequests")
+  reviewedReactivationRequests ReactivationRequest[] @relation("ReviewedReactivationRequests")
 
   // Relations V2
   favorites             Favorite[]
@@ -148,6 +151,17 @@ model User {
   receivedMessages      Message[]             @relation("MessageReceiver")
   conversations1        Conversation[]        @relation("ConversationParticipant1")
   conversations2        Conversation[]        @relation("ConversationParticipant2")
+
+  // Relations V3 : paiements, parrainage, fidélité, boosting
+  payments            Payment[]
+  referralCode        String?   @unique
+  referralPoints      Int       @default(0)
+  referredBy          String?   @db.Uuid
+  referralsGiven      Referral[] @relation("Referrer")
+  referralsReceived   Referral[] @relation("Referred")
+  loyaltyPoints       LoyaltyTransaction[]
+  vehicleBoosts       VehicleBoost[]
+  chatSessions        ChatSession[]
 
   @@index([role])
   @@index([isActive])
@@ -223,6 +237,7 @@ model Vehicle {
   conditionReport     VehicleConditionReport?
   favorites           Favorite[]
   reviews             Review[]
+  boosts              VehicleBoost[]
 
   @@index([ownerId])
   @@index([type, commune])
@@ -268,6 +283,9 @@ model RentalBooking {
   // Relations V2
   review              Review?
   rentalContract      RentalContract?
+  payments            Payment[]
+  discountCode        String?
+  discountPercent     Int?
 
   @@index([vehicleId, startDate, endDate])
   @@index([customerId, status])
@@ -475,6 +493,27 @@ model Report {
   @@index([targetId, targetType])
 }
 
+// ── Demandes de réactivation ────────────────────────────────────────────────
+model ReactivationRequest {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  user            User     @relation("ApplicantReactivationRequests", fields: [userId], references: [id], onDelete: Cascade)
+  phone           String
+  firstName       String
+  lastName        String
+  reason          String?
+  status          String   @default("PENDING")
+  reviewedById    String?  @db.Uuid
+  reviewedBy      User?    @relation("ReviewedReactivationRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+  rejectionReason String?
+  reviewedAt      DateTime? @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
 // ── Codes de réinitialisation mot de passe ─────────────────────────────────
 model PasswordReset {
   id        String   @id @default(uuid()) @db.Uuid
@@ -488,4 +527,166 @@ model PasswordReset {
 
   @@index([phone])
   @@index([phone, code])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Feature 1 : Paiements Orange Money
+// ═══════════════════════════════════════════════════════════════════════════
+model Payment {
+  id              String   @id @default(uuid()) @db.Uuid
+  bookingId       String   @db.Uuid
+  booking         RentalBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId          String   @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount          Decimal  @db.Decimal(12, 0)
+  currency        String   @default("GNF")
+  provider        String   @default("ORANGE_MONEY")
+  providerTxId    String?  @unique
+  status          String   @default("PENDING")
+  // PENDING, PROCESSING, PAID, FAILED, REFUNDED
+  phone           String
+  metadata        Json?
+  paidAt          DateTime?
+  refundedAt      DateTime?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([bookingId])
+  @@index([userId, status])
+  @@index([providerTxId])
+  @@index([status, createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Feature 4 : Parrainage et Points de fidélité
+// ═══════════════════════════════════════════════════════════════════════════
+model Referral {
+  id              String   @id @default(uuid()) @db.Uuid
+  referrerId      String   @db.Uuid
+  referrer        User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId      String   @db.Uuid
+  referred        User     @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+  code            String   @unique
+  bonusAwarded    Int      @default(0)
+  status          String   @default("PENDING")
+  // PENDING (inscription), ACTIVE (1ère réservation), EXPIRED
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  activatedAt     DateTime?
+
+  @@index([referrerId])
+  @@index([referredId])
+  @@index([code])
+}
+
+model LoyaltyTransaction {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points          Int
+  // Positif = gain, Négatif = dépense
+  type            String
+  // EARN_BOOKING, EARN_REFERRAL, EARN_REVIEW, SPEND_DISCOUNT
+  description     String?
+  referenceId     String?  // ID de la réservation ou du parrainage liée
+  balance         Int      // Solde après cette transaction
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+model DiscountCode {
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique
+  userId          String?  @db.Uuid
+  // null = code générique, sinon code personnel
+  percent         Int      @default(10)
+  maxUses         Int      @default(1)
+  usedCount       Int      @default(0)
+  pointsRequired  Int      @default(100)
+  active          Boolean  @default(true)
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([code])
+  @@index([userId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Feature 6 : Boosting payant
+// ═══════════════════════════════════════════════════════════════════════════
+model VehicleBoost {
+  id              String   @id @default(uuid()) @db.Uuid
+  vehicleId       String   @db.Uuid
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  userId          String   @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level           String   @default("BASIC")
+  // BASIC (gratuit), PREMIUM, VIP
+  startDate       DateTime
+  endDate         DateTime
+  price           Decimal  @db.Decimal(10, 0)
+  // 0 pour BASIC, payant pour les autres
+  status          String   @default("ACTIVE")
+  // ACTIVE, EXPIRED, CANCELLED
+  paymentId       String?  @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([vehicleId])
+  @@index([userId])
+  @@index([level, status])
+  @@index([endDate, status])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Feature 5 : FAQ Chatbot
+// ═══════════════════════════════════════════════════════════════════════════
+model FaqEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  questionFr  String
+  questionEn  String
+  answerFr    String
+  answerEn    String
+  category    String   // "GENERAL", "BOOKING", "PAYMENT", "ACCOUNT", "VEHICLE"
+  keywords    String[] // Mots-clés pour recherche floue
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  views       Int      @default(0)
+  helpful     Int      @default(0)
+  notHelpful  Int      @default(0)
+  messages    ChatMessage[]
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([category, isActive])
+  @@index([isActive, sortOrder])
+}
+
+model ChatSession {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @db.Uuid
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId   String   @unique
+  status      String   @default("ACTIVE")
+  // ACTIVE, CLOSED
+  messages    ChatMessage[]
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id              String      @id @default(uuid()) @db.Uuid
+  sessionId       String      @db.Uuid
+  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role            String      // "user", "assistant"
+  content         String
+  faqEntryId      String?     @db.Uuid
+  faqEntry        FaqEntry?   @relation(fields: [faqEntryId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([sessionId, createdAt])
 }

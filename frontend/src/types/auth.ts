@@ -8,6 +8,7 @@ export type AuthUser = {
   lastName: string;
   role: UserRole;
   isActive: boolean;
+  isBanned: boolean;
 };
 
 export type AuthResponse = {

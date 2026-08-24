@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
@@ -8,8 +7,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { TranslateFieldButton } from "../../components/TranslateFieldButton";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch, deleteVehiclePhoto, resolvePhotoUrl, uploadVehiclePhotos } from "../../lib/api";
-import type { ApiResponse, Booking, Vehicle } from "../../lib/domain";
-import { formatGnf } from "../../lib/domain";
+import { formatGnf, type ApiResponse, type Booking, type Vehicle } from "../../lib/domain";
 
 const VEHICLE_TYPES = [
   "CITADINE", "BERLINE", "SUV", "QUATRE_QUATRE", "UTILITAIRE", "MINIBUS", "CAMION", "MOTO", "AUTRE",
@@ -487,7 +485,7 @@ export function OwnerDashboardPage() {
                         <div className="mt-3 grid grid-cols-4 gap-2 overflow-hidden">
                           {vehicle.photos.map((photo) => (
                             <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
-                              <img src={resolvePhotoUrl(photo.url)} alt={`${vehicle.brand} ${vehicle.model}`} className="h-full w-full object-cover" />
+                              <img src={resolvePhotoUrl(photo.url)} alt={`${vehicle.brand} ${vehicle.model}`} loading="lazy" className="h-full w-full object-cover" />
                               <button type="button" onClick={() => removePhoto(vehicle, photo.id)} className="absolute right-1 top-1 rounded-full bg-rose-600 px-1.5 text-xs font-black text-white opacity-90 hover:bg-rose-700" title={t("common.delete")}>✕</button>
                             </div>
                           ))}

@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useAuth } from "../../contexts/AuthContext";
@@ -64,11 +65,7 @@ function isSameDay(a: string, b: string): boolean {
 export function AdminChatsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [conversations, setConversations] = useState<AdminConversation[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AdminMessage[]>([]);
-  const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -80,12 +77,9 @@ export function AdminChatsPage() {
 
   // ── Impression ciblée de la conversation sélectionnée ──
   const handlePrint = useCallback(() => {
-    if (!printRef.current) return;
-    const printWindow = window.open("", "_blank", "width=800,height=600");
-    if (!printWindow) return;
+    if (!messages.length) return;
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
+    const html = `<!DOCTYPE html>
       <html lang="fr">
       <head>
         <meta charset="UTF-8" />
@@ -130,45 +124,61 @@ export function AdminChatsPage() {
         <div class="footer">Imprimé le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} — CarGuinée</div>
       </body>
       </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+    `;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const printWindow = window.open(url, "_blank", "width=800,height=600");
+    if (!printWindow) {
+      URL.revokeObjectURL(url);
+      return;
+    }
+    printWindow.onload = () => {
+      printWindow.print();
+      URL.revokeObjectURL(url);
+    };
   }, [messages, selectedConv]);
 
-  // ── Hooks TOUJOURS appelés (même si non-admin) ──
-  useEffect(() => {
-    if (!user || user.role !== "ADMIN") return;
-    apiFetch<{ status: string; data: { items: AdminConversation[] } }>(
-      "/api/messages/admin/conversations",
-    )
-      .then((res) => setConversations(res.data.items))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [user]);
+  // ── Conversations admin ──
+  const isAdmin = user?.role === "ADMIN";
+  const { data: conversations = [], isLoading: loading } = useQuery({
+    queryKey: ["admin", "conversations"],
+    queryFn: () =>
+      apiFetch<{ status: string; data: { items: AdminConversation[] } }>(
+        "/api/messages/admin/conversations",
+      ).then((res) => res.data.items),
+    enabled: isAdmin,
+  });
 
-  const loadMessages = useCallback(async (convId: string) => {
-    setLoadingMessages(true);
-    try {
-      const res = await apiFetch<{
+  // ── Messages de la conversation sélectionnée ──
+  const { data: serverMessages = [], isLoading: loadingMessages } = useQuery({
+    queryKey: ["admin", "messages", selectedId],
+    queryFn: () =>
+      apiFetch<{
         status: string;
         data: { items: AdminMessage[] };
-      }>(`/api/messages/admin/conversations/${convId}/messages`);
-      setMessages(res.data.items);
-    } catch {
-      setMessages([]);
-    } finally {
-      setLoadingMessages(false);
-    }
-  }, []);
+      }>(`/api/messages/admin/conversations/${selectedId}/messages`).then(
+        (res) => res.data.items,
+      ),
+    enabled: !!selectedId,
+  });
 
-  useEffect(() => {
-    if (selectedId) loadMessages(selectedId);
-  }, [selectedId, loadMessages]);
+  // Messages locaux (après suppressions) + messages du serveur
+  const [localMessages, setLocalMessages] = useState<AdminMessage[]>([]);
+  const messages = localMessages.length > 0 ? localMessages : serverMessages;
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // Reset les messages locaux quand on change de conversation
+  const prevSelectedIdRef = useRef(selectedId);
+  if (prevSelectedIdRef.current !== selectedId) {
+    prevSelectedIdRef.current = selectedId;
+    setLocalMessages([]);
+  }
+
+  // Scroll automatique vers le bas
+  const messagesEndRef2 = useRef<HTMLDivElement>(null);
+  if (messagesEndRef2.current) {
+    messagesEndRef2.current.scrollIntoView({ behavior: "smooth" });
+  }
 
   // ── Vérifier admin APRÈS les hooks ──
   if (!user || user.role !== "ADMIN") {
@@ -182,9 +192,6 @@ export function AdminChatsPage() {
       </AppShell>
     );
   }
-
-  const getOther = (conv: AdminConversation, currentUserId: string) =>
-    conv.participant1.id === currentUserId ? conv.participant2 : conv.participant1;
 
   // ── Vue liste ──
   if (!selectedId) {
@@ -279,7 +286,7 @@ export function AdminChatsPage() {
           <button
             onClick={() => {
               setSelectedId(null);
-              setMessages([]);
+              setLocalMessages([]);
             }}
             className="text-sm font-bold text-emerald-700 dark:text-emerald-400"
           >
@@ -413,7 +420,12 @@ export function AdminChatsPage() {
           setDeletingMsgId(messageId);
           try {
             await apiFetch(`/api/messages/messages/${messageId}`, { method: "DELETE" });
-            setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m));
+            setLocalMessages((prev) => {
+              const updated = (prev.length > 0 ? prev : serverMessages).map((m) =>
+                m.id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m,
+              );
+              return updated;
+            });
             showToast("Message supprimé.", "success");
           } catch {
             showToast("Impossible de supprimer le message.", "error");

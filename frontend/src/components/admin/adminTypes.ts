@@ -1,7 +1,6 @@
 /**
  * Types partagés pour les sous-composants AdminDashboard
  */
-import type { Vehicle, Booking } from "../../lib/domain";
 
 export type AdminStats = {
   totalVehicles: number;

@@ -129,7 +129,7 @@ export function AdminReviewsPage() {
                   {review.vehicle && (
                     <div className="h-16 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-600 dark:from-slate-900 dark:to-slate-700">
                       {photo ? (
-                        <img src={photo} alt={`${review.vehicle.brand} ${review.vehicle.model}`} className="h-full w-full object-cover" />
+                        <img src={photo} alt={`${review.vehicle.brand} ${review.vehicle.model}`} loading="lazy" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xl">🚗</div>
                       )}

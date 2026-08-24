@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logger } from "./logger.js";
 
 /**
  * Client Resend pour l'envoi d'emails transactionnels.
@@ -74,7 +75,7 @@ export async function sendPasswordResetEmail(
 
     return true;
   } catch (error) {
-    console.error("[RESEND] Failed to send password reset email:", error);
+    logger.error({ error }, "[RESEND] Failed to send password reset email");
     return false;
   }
 }

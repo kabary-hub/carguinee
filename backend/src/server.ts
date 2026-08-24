@@ -25,6 +25,13 @@ import { standardLimiter } from "./lib/rate-limiter.js";
 import { logger, requestLogger } from "./lib/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { securityHeaders, cspReportHandler } from "./middleware/securityHeaders.js";
+import { metricsMiddleware } from "./middleware/metrics.js";
+import { metricsRouter } from "./modules/metrics/metrics.routes.js";
+import { featureFlagsRouter } from "./modules/admin/feature-flags.routes.js";
+import { paymentRouter } from "./modules/payments/payment.routes.js";
+import { referralRouter } from "./modules/referrals/referral.routes.js";
+import { chatbotRouter } from "./modules/chatbot/chatbot.routes.js";
+import { boostingRouter } from "./modules/boosting/boosting.routes.js";
 import { setCsrfCookie, validateCsrf, refreshCsrf } from "./middleware/csrf.js";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
@@ -66,12 +73,18 @@ app.use(morgan("dev"));
 app.use(cookieParser());
 app.use(setCsrfCookie);
 app.use(requestLogger);
+app.use(metricsMiddleware);
 
 // Les photos téléversées (backend/uploads/vehicles) sont servies depuis
 // /uploads afin que le frontend puisse les afficher directement.
 app.use("/uploads", express.static(path.resolve("uploads")));
 
 app.use("/api/admin", standardLimiter, validateCsrf, adminRouter);
+app.use("/api/admin/feature-flags", standardLimiter, validateCsrf, featureFlagsRouter);
+app.use("/api/payments", standardLimiter, paymentRouter);
+app.use("/api/referrals", standardLimiter, referralRouter);
+app.use("/api/chatbot", standardLimiter, chatbotRouter);
+app.use("/api/boosting", standardLimiter, validateCsrf, boostingRouter);
 app.post("/api/auth/csrf-refresh", refreshCsrf);
 app.use("/api/auth", standardLimiter, authRouter);
 app.use("/api/auth", standardLimiter, reactivationRouter);
@@ -94,6 +107,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: ".swagger-ui .topbar { display: none }",
   customSiteTitle: "CarGuinée API — Documentation",
 }));
+app.use("/metrics", metricsRouter);
 app.get("/api/docs.json", (_request, response) => {
   response.setHeader("Content-Type", "application/json");
   response.send(swaggerSpec);

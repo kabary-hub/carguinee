@@ -1,20 +1,28 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-const TOKEN_KEY = "carguinee_access_token";
 
 export type ApiError = Error & {
   status?: number;
 };
 
+/**
+ * Récupère le token JWT stocké côté client.
+ * Le serveur place aussi le JWT dans un cookie httpOnly, mais ce cookie
+ * n'est pas envoyé par les requêtes fetch cross-origin (même avec
+ * credentials: "include") si sameSite !== "none". On utilise donc
+ * le token stocké pour construire le header Authorization.
+ */
 export function getStoredToken() {
-  return sessionStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem("carguinee_access_token");
 }
 
+/** Stocke le token JWT côté client (complément du cookie httpOnly). */
 export function storeToken(token: string) {
-  sessionStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem("carguinee_access_token", token);
 }
 
+/** Supprime le token stocké côté client (déconnexion). */
 export function clearStoredToken() {
-  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem("carguinee_access_token");
 }
 
 /**
@@ -49,6 +57,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   const payload = await response.json().catch(() => null);
@@ -88,6 +97,7 @@ export async function uploadVehiclePhotos(
     method: "POST",
     headers,
     body: formData,
+    credentials: "include",
   });
 
   const payload = await response.json().catch(() => null);

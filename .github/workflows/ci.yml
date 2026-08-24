@@ -6,18 +6,48 @@ on:
   pull_request:
     branches: [main]
 
+# Annuler les runs précédents quand un nouveau push arrive sur la même branche
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Variables communes
+  NODE_ENV: test
+
 jobs:
   # ── Backend ────────────────────────────────────────────────────────────────
   backend:
-    name: Backend
+    name: Backend (typecheck + tests + build)
     runs-on: ubuntu-latest
+
+    # PostgreSQL pour les tests d'intégration
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: carguinee_ci
+          POSTGRES_PASSWORD: carguinee_ci
+          POSTGRES_DB: carguinee_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U carguinee_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://carguinee_ci:carguinee_ci@localhost:5432/carguinee_test
+      JWT_SECRET: ci-test-secret-key-that-is-at-least-32-characters
+      ENCRYPTION_KEY: aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344
+      RESEND_API_KEY: re_test_placeholder
+      CORS_ORIGIN: http://localhost:5173
+      PORT: 3000
+
     defaults:
       run:
         working-directory: backend
-    env:
-      DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-      JWT_SECRET: test-secret-key-that-is-at-least-32-chars-long
-      RESEND_API_KEY: re_test
 
     steps:
       - uses: actions/checkout@v4
@@ -34,20 +64,23 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Push schema to test database
+        run: npx prisma db push --skip-generate
+
       - name: TypeScript check
         run: npx tsc --noEmit
 
-      - name: Tests
+      - name: Tests unitaires et intégration
         run: npm test
-        continue-on-error: true
 
-      - name: Build
+      - name: Build production
         run: npx tsc
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:
-    name: Frontend
+    name: Frontend (typecheck + lint + build)
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: frontend
@@ -65,10 +98,13 @@ jobs:
         run: npm ci
 
       - name: TypeScript check
-        run: npx tsc --noEmit
+        run: npx tsc -b
 
       - name: Lint
-        run: npm run lint || true
+        run: npm run lint
 
-      - name: Build
+      - name: Tests unitaires
+        run: npm test
+
+      - name: Build production
         run: npx vite build

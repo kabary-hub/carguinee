@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
+import { cached } from "../../lib/cache.js";
 import type { PublicationStatus } from "../../generated/prisma/enums.js";
 
 /**
@@ -30,6 +31,10 @@ export type StatsPrismaClient = {
       where?: { status?: { in: string[] } };
       select?: { totalAmountGnf: boolean };
     }) => Promise<{ totalAmountGnf: number }[]>;
+    aggregate: (args: {
+      where?: { status?: { in: string[] } };
+      _sum?: { totalAmountGnf?: boolean };
+    }) => Promise<{ _sum: { totalAmountGnf: number | null } }>;
     groupBy: (args: {
       by: string[];
       _count?: { _all: boolean } | { vehicleId: boolean };
@@ -47,6 +52,12 @@ export type StatsPrismaClient = {
  */
 export async function getAdminStats(
   prismaClient: StatsPrismaClient = prisma as unknown as StatsPrismaClient,
+) {
+  return cached("admin:stats", 30_000, () => getAdminStatsUncached(prismaClient));
+}
+
+async function getAdminStatsUncached(
+  prismaClient: StatsPrismaClient,
 ) {
   const [totalVehicles, pendingVehicles, totalUsers, vehiclesByStatus, usersByRole, bookingsByStatus] =
     await Promise.all([
@@ -68,11 +79,11 @@ export async function getAdminStats(
 
   // ── Statistiques avancées V2 ──
   const totalBookings = await prismaClient.rentalBooking.count();
-  const confirmedBookings = await prismaClient.rentalBooking.findMany({
+  const revenueAgg = await prismaClient.rentalBooking.aggregate({
     where: { status: { in: ["CONFIRMEE", "EN_COURS", "TERMINEE"] } },
-    select: { totalAmountGnf: true },
+    _sum: { totalAmountGnf: true },
   });
-  const totalRevenue = confirmedBookings.reduce((sum, b) => sum + b.totalAmountGnf, 0);
+  const totalRevenue = revenueAgg._sum.totalAmountGnf ?? 0;
 
   // Top véhicules les plus réservés
   const topVehicles = await prismaClient.rentalBooking.groupBy({

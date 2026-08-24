@@ -4,14 +4,29 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { requireAuth } from "./auth.middleware.js";
-import { login, register } from "./auth.service.js";
+import { login, register, AccountDeactivatedError, AccountBannedError } from "./auth.service.js";
 import { loginSchema, registerSchema } from "./auth.schemas.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 import { strictLimiter, authLimiter } from "../../lib/rate-limiter.js";
 import { logger } from "../../lib/logger.js";
 import { sendPasswordResetEmail } from "../../lib/email.js";
+import { env } from "../../config/env.js";
 
 export const authRouter = Router();
+
+/**
+ * Place le JWT dans un cookie httpOnly (inaccessible au JavaScript côté client).
+ * Le même token est aussi retourné dans le body pour la rétrocompatibilité.
+ */
+function setAuthCookie(response: any, token: string) {
+  response.cookie("auth_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 24 * 60 * 60 * 1000, // 24h
+  });
+}
 
 /**
  * @swagger
@@ -80,6 +95,7 @@ authRouter.post("/register", authLimiter, async (request, response) => {
 
   try {
     const result = await register(parsed.data);
+    setAuthCookie(response, result.accessToken);
     response.status(201).json({ status: "ok", data: result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Inscription impossible.";
@@ -145,9 +161,27 @@ authRouter.post("/login", authLimiter, async (request, response) => {
 
   try {
     const result = await login(parsed.data);
+    setAuthCookie(response, result.accessToken);
     response.json({ status: "ok", data: result });
   } catch (error) {
-    response.status(401).json({ status: "error", message: "Identifiants invalides." });
+    if (error instanceof AccountDeactivatedError) {
+      response.status(403).json({
+        status: "error",
+        code: "ACCOUNT_DEACTIVATED",
+        message: error.message,
+      });
+      return;
+    }
+    if (error instanceof AccountBannedError) {
+      response.status(403).json({
+        status: "error",
+        code: "ACCOUNT_BANNED",
+        message: error.message,
+      });
+      return;
+    }
+    const message = error instanceof Error ? error.message : "Identifiants invalides.";
+    response.status(401).json({ status: "error", message });
   }
 });
 
@@ -198,6 +232,7 @@ authRouter.get("/me", requireAuth, async (request, response) => {
       lastName: user.lastName,
       role: user.role,
       isActive: user.isActive,
+      isBanned: user.isBanned,
     },
   });
 });
@@ -548,4 +583,10 @@ authRouter.patch("/me", requireAuth, async (request, response) => {
   } catch (error) {
     handleRouteError(error, response, "Modification impossible.");
   }
+});
+
+// ── Logout ───────────────────────────────────────────────────────────────
+authRouter.post("/logout", (_request, response) => {
+  response.clearCookie("auth_token", { path: "/" });
+  response.json({ status: "ok", message: "Déconnexion réussie." });
 });

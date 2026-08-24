@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
 import { TranslateFieldButton } from "../../components/TranslateFieldButton";

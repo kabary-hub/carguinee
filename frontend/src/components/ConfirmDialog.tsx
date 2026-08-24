@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 type ConfirmDialogProps = {
@@ -27,16 +27,17 @@ export function ConfirmDialog({
   const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
+  const prevOpenRef = useRef(open);
+
+  // Reset state quand le dialog s'ouvre (transition false → true)
+  if (open && !prevOpenRef.current) {
+    setReason("");
+    setTouched(false);
+  }
+  prevOpenRef.current = open;
 
   const resolvedConfirmLabel = confirmLabel || t("confirmDialog.confirm");
   const resolvedReasonPlaceholder = reasonPlaceholder || t("confirmDialog.reasonPlaceholder");
-
-  useEffect(() => {
-    if (open) {
-      setReason("");
-      setTouched(false);
-    }
-  }, [open]);
 
   if (!open) {
     return null;

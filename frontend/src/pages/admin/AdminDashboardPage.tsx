@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
@@ -227,9 +227,15 @@ export function AdminDashboardPage() {
           </div>
           <Link
             to="/administration/chats"
-            className="ml-auto hidden items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 sm:flex dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="hidden items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 sm:flex dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
           >
             💬 Conversations
+          </Link>
+          <Link
+            to="/administration/moderation"
+            className="hidden items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 sm:flex dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            🛡️ Modération
           </Link>
         </div>
 

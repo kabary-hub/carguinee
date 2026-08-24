@@ -31,7 +31,7 @@ export function VehicleGallery({ photos, vehicleName }: { photos: GalleryPhoto[]
 
   return <div>
     <button type="button" onClick={() => setIsFullscreen(true)} className="group relative block h-80 w-full overflow-hidden rounded-3xl bg-slate-900 text-left" aria-label={t("vehicles.details.photos", { count: orderedPhotos.length })}>
-      <img src={resolvePhotoUrl(selectedPhoto.url)} alt={`${vehicleName} — photo ${selectedIndex + 1}`} className="vehicle-photo h-full w-full object-cover" />
+      <img src={resolvePhotoUrl(selectedPhoto.url)} alt={`${vehicleName} — photo ${selectedIndex + 1}`} loading="lazy" className="vehicle-photo h-full w-full object-cover" />
       <span className="absolute right-4 top-4 rounded-full bg-slate-950/75 px-3 py-1.5 text-xs font-bold text-white">{selectedIndex + 1} / {orderedPhotos.length}</span>
       <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 to-transparent px-5 pb-5 pt-12 text-sm font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">{t("vehicles.details.viewFullscreen")}</span>
     </button>
@@ -39,7 +39,7 @@ export function VehicleGallery({ photos, vehicleName }: { photos: GalleryPhoto[]
     {isFullscreen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4" role="dialog" aria-modal="true" aria-label={t("vehicles.details.gallery", { name: vehicleName })}>
       <button type="button" onClick={() => setIsFullscreen(false)} className="absolute right-5 top-5 rounded-full bg-white/15 px-4 py-2 text-sm font-bold text-white hover:bg-white/25">{t("common.close")}</button>
       {orderedPhotos.length > 1 && <button type="button" onClick={previous} className="absolute left-3 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:left-8" aria-label={t("vehicles.details.previousPhoto")}>‹</button>}
-      <img src={resolvePhotoUrl(selectedPhoto.url)} alt={`${vehicleName} — photo ${selectedIndex + 1}`} className="max-h-[84vh] max-w-[88vw] rounded-xl object-contain shadow-2xl" />
+      <img src={resolvePhotoUrl(selectedPhoto.url)} alt={`${vehicleName} — photo ${selectedIndex + 1}`} loading="lazy" className="max-h-[84vh] max-w-[88vw] rounded-xl object-contain shadow-2xl" />
       {orderedPhotos.length > 1 && <button type="button" onClick={next} className="absolute right-3 rounded-full bg-white/15 px-4 py-3 text-2xl text-white hover:bg-white/25 sm:right-8" aria-label={t("vehicles.details.nextPhoto")}>›</button>}
       <p className="absolute bottom-5 text-sm font-semibold text-white">{t("vehicles.details.photoCount", { current: selectedIndex + 1, total: orderedPhotos.length })}</p>
     </div>}

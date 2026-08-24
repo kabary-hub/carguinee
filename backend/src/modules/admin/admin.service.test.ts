@@ -33,6 +33,7 @@ function fakeClient(): StatsPrismaClient {
         { totalAmountGnf: 500000 },
         { totalAmountGnf: 300000 },
       ],
+      aggregate: async () => ({ _sum: { totalAmountGnf: 800000 } }),
       groupBy: async (args) => {
         if (args.by.includes("vehicleId")) {
           return [

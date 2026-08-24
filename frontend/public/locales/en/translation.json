@@ -58,7 +58,15 @@
         "invalidCredentials": "Incorrect phone number or password",
         "accountInactive": "Your account is deactivated. Please contact the administrator.",
         "networkError": "Connection error. Please try again."
-      }
+      },
+      "accountDeactivated": "Your account has been deactivated.",
+      "accountDeactivatedDesc": "You can request account reactivation. An administrator will review your request.",
+      "requestReactivation": "Request Reactivation",
+      "reactivationReason": "Reason for your request (optional)",
+      "reactivationReasonPlaceholder": "Explain why you want to reactivate your account...",
+      "reactivationSuccess": "Your reactivation request has been sent!",
+      "reactivationSuccessDesc": "An administrator will review it shortly. You will be notified once it's processed.",
+      "accountBanned": "Your account has been suspended. Please contact support for more information."
     },
     "register": {
       "title": "Register",
@@ -522,7 +530,54 @@
     "deleteAllBookingsMessage": "Are you sure you want to delete {{count}} booking(s)? This action is irreversible.",
     "confirmDeleteAll": "Delete",
     "bookingsDeleted": "Bookings deleted.",
-    "deleteError": "Error during deletion."
+    "deleteError": "Error during deletion.",
+    "moderation": {
+      "title": "Moderation",
+      "subtitle": "Moderation",
+      "description": "Manage reactivation requests, banned and deactivated accounts.",
+      "tabs": {
+        "requests": "Reactivation Requests",
+        "banned": "Banned",
+        "deactivated": "Deactivated"
+      },
+      "backToAdmin": "Back to Admin",
+      "noRequests": "No reactivation requests yet.",
+      "noBannedUsers": "No banned users.",
+      "noDeactivatedUsers": "No deactivated users.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectTitle": "Reject Request",
+      "rejectMessage": "Are you sure you want to reject this reactivation request?",
+      "ban": "Ban",
+      "unban": "Unban",
+      "deactivate": "Deactivate",
+      "banned": "Banned",
+      "deactivated": "Deactivated",
+      "banConfirmTitle": "Ban this user?",
+      "banConfirmMessage": "The user will be banned and their account deactivated. They will no longer be able to log in.",
+      "unbanConfirmTitle": "Unban this user?",
+      "unbanConfirmMessage": "The user will be unbanned and their account reactivated. They will be able to log in again.",
+      "deactivateConfirmTitle": "Deactivate this user?",
+      "deactivateConfirmMessage": "The user will be deactivated and banned. They will no longer be able to log in.",
+      "reviewedAt": "Processed on",
+      "reviewedBy": "Processed by",
+      "rejectionReason": "Rejection reason",
+      "accountStatus": "Account status",
+      "detailRequest": "Request Details",
+      "detailUser": "User Details",
+      "table": {
+        "user": "User",
+        "phone": "Phone",
+        "role": "Role",
+        "reason": "Reason",
+        "status": "Status",
+        "date": "Date",
+        "actions": "Actions",
+        "badge": "Badge",
+        "vehicles": "Vehicles",
+        "bookings": "Bookings"
+      }
+    }
   },
   "profile": {
     "title": "My Profile",
@@ -796,5 +851,139 @@
     "message": "Are you sure you want to log out?",
     "confirmLabel": "Log out",
     "success": "You have been logged out."
+  },
+  "cookieConsent": {
+    "title": "🍪 Cookies & Privacy",
+    "description": "We use technical cookies essential for the platform to function (authentication, preferences). No tracking cookies are placed without your explicit consent.",
+    "privacyLink": "Privacy Policy",
+    "accept": "Accept",
+    "refuse": "Refuse"
+  },
+  "rgpd": {
+    "title": "My Rights (GDPR)",
+    "description": "You can export your personal data or deactivate your account. Deactivation is reversible: you can reactivate your account at any time.",
+    "exportData": "📥 Export my data",
+    "exporting": "Exporting...",
+    "exportSuccess": "Data exported successfully.",
+    "exportError": "Error exporting data.",
+    "deactivateAccount": "⚠️ Deactivate my account",
+    "deactivateNote": "Deactivation is reversible. Your data is preserved and you can reactivate your account by logging back in.",
+    "deactivateSuccess": "Your account has been deactivated. You can reactivate it at any time.",
+    "deactivateError": "Error deactivating account.",
+    "deactivateConfirmTitle": "Deactivate your account?",
+    "deactivateConfirmMessage": "Your account will be deactivated and you will be logged out. You can reactivate it by logging back in. Pending bookings will be cancelled.",
+    "deactivateConfirmButton": "Yes, deactivate"
+  },
+  "registreTraitements": {
+    "title": "Data Processing Register",
+    "lastUpdated": "August 24, 2026",
+    "intro": "In accordance with the GDPR, we maintain an internal register of personal data processing carried out by CarGuinée.",
+    "tableHeaders": {
+      "traitement": "Processing",
+      "donnees": "Data collected",
+      "finalite": "Purpose",
+      "baseLegale": "Legal basis",
+      "duree": "Retention period",
+      "destinataires": "Recipients"
+    },
+    "traitements": {
+      "compte": {
+        "titre": "User account management",
+        "donnees": "Last name, first name, phone, email, password (hashed)",
+        "finalite": "Authentication and account management",
+        "baseLegale": "Contract performance",
+        "duree": "Account duration + 30 days",
+        "destinataires": "CarGuinée team"
+      },
+      "reservation": {
+        "titre": "Booking management",
+        "donnees": "Dates, amounts, status, notes",
+        "finalite": "Connecting renters and owners",
+        "baseLegale": "Contract performance",
+        "duree": "5 years (legal accounting obligations)",
+        "destinataires": "Relevant owners, accounting"
+      },
+      "vehicule": {
+        "titre": "Vehicle listings",
+        "donnees": "Brand, model, photos, price, location",
+        "finalite": "Listing and searching for vehicles",
+        "baseLegale": "Contract performance",
+        "duree": "Duration of the listing",
+        "destinataires": "Public (listing), owner"
+      },
+      "messagerie": {
+        "titre": "Built-in messaging",
+        "donnees": "Text messages, timestamps",
+        "finalite": "Communication between users",
+        "baseLegale": "Contract performance",
+        "duree": "Account duration",
+        "destinataires": "Conversation participants"
+      },
+      "avis": {
+        "titre": "Review system",
+        "donnees": "Rating, comment",
+        "finalite": "Service quality assessment",
+        "baseLegale": "Legitimate interest",
+        "duree": "Account duration",
+        "destinataires": "Public (reviews)"
+      },
+      "securite": {
+        "titre": "Security and prevention",
+        "donnees": "IP address, login logs",
+        "finalite": "Protection against fraud and abuse",
+        "baseLegale": "Legitimate interest",
+        "duree": "13 months",
+        "destinataires": "CarGuinée technical team"
+      }
+    }
+  },
+  "payment": {
+    "title": "Orange Money Payment",
+    "payWithOrangeMoney": "Pay with Orange Money",
+    "amount": "Amount to pay",
+    "phoneNumber": "Orange Money phone number",
+    "phoneInvalid": "Invalid phone number",
+    "confirm": "Confirm",
+    "info": "You will receive a notification on your phone to confirm the payment.",
+    "error": "Payment error",
+    "networkError": "Network error. Please try again."
+  },
+  "referral": {
+    "title": "Referral & Loyalty",
+    "yourCode": "Your referral code",
+    "generateCode": "Generate my code",
+    "shareInfo": "Share this code with your friends. Each signup = 10 points!",
+    "totalReferrals": "Referrals",
+    "active": "active",
+    "points": "Points",
+    "pointsEarned": "earned",
+    "discountAvailable": "10% discount available!",
+    "discountInfo": "Use your points on your next booking.",
+    "nextDiscount": "Next discount in",
+    "pointsLower": "points",
+    "history": "Points History",
+    "noHistory": "No transactions yet.",
+    "balance": "balance",
+    "earnBooking": "Booking",
+    "earnReferral": "Referral",
+    "spendDiscount": "Discount applied",
+    "earnReview": "Review"
+  },
+  "chatbot": {
+    "title": "Carguinee Assistant",
+    "subtitle": "FAQ & Support",
+    "welcome": "Hello! How can I help you?",
+    "welcomeSub": "Ask me anything about Carguinee.",
+    "placeholder": "Type your question...",
+    "helpful": "Helpful?",
+    "open": "Open chatbot"
+  },
+  "boosting": {
+    "title": "Vehicle Boosting",
+    "free": "Free",
+    "days": "days",
+    "activate": "Activate {{level}} boost",
+    "cancel": "Cancel",
+    "expires": "Expires on"
   }
 }

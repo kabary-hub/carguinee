@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { PasswordInput } from "../components/PasswordInput";
 import { useAuth } from "../contexts/AuthContext";
 import { getHomeRouteForRole, isRouteAllowedForRole } from "../lib/roles";
+import { apiFetch, type ApiError } from "../lib/api";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -16,25 +17,65 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // État pour le cas "compte désactivé"
+  const [accountDeactivated, setAccountDeactivated] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [requestReason, setRequestReason] = useState("");
+
+  // Afficher un message si redirigé après bannissement
+  const locationState = location.state as { banned?: boolean } | null;
+  const hasCleanedRef = useRef(false);
+  if (locationState?.banned && !hasCleanedRef.current) {
+    // Nettoyer l'état pour ne pas afficher le message au rechargement
+    window.history.replaceState({}, "");
+    hasCleanedRef.current = true;
+  }
+  const bannedError = locationState?.banned ? t("auth.login.accountBanned") : "";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setAccountDeactivated(false);
+    setRequestSent(false);
     setIsSubmitting(true);
 
     try {
       const authenticatedUser = await login({ phone, password });
-      // Redirection par rôle : on respecte une éventuelle page demandée avant
-      // la connexion (état « from »), sinon on ouvre l'espace du rôle connecté.
       const from = (location.state as { from?: string } | null)?.from;
       const safeFrom = from && isRouteAllowedForRole(from, authenticatedUser.role) ? from : undefined;
       navigate(safeFrom ?? getHomeRouteForRole(authenticatedUser.role), {
         replace: true,
       });
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : t("auth.login.errors.networkError"));
+      const err = submissionError as ApiError;
+      if (err.status === 403) {
+        // Compte désactivé ou banni
+        setAccountDeactivated(true);
+        setError("");
+      } else {
+        setError(submissionError instanceof Error ? submissionError.message : t("auth.login.errors.networkError"));
+      }
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  // Demande de réactivation
+  async function handleRequestReactivation() {
+    setRequesting(true);
+    try {
+      await apiFetch("/api/auth/request-reactivation", {
+        method: "POST",
+        body: JSON.stringify({ phone, reason: requestReason || undefined }),
+      });
+      setRequestSent(true);
+      setAccountDeactivated(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'envoyer la demande.");
+      setAccountDeactivated(false);
+    } finally {
+      setRequesting(false);
     }
   }
 
@@ -58,6 +99,57 @@ export function LoginPage() {
             {t("auth.login.subtitle")}
           </p>
 
+          {/* ── Demande de réactivation envoyée ── */}
+          {requestSent && (
+            <div className="mt-6 rounded-xl bg-emerald-50 p-5 dark:bg-emerald-500/15">
+              <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                ✅ {t("auth.login.reactivationSuccess")}
+              </p>
+              <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-400">
+                {t("auth.login.reactivationSuccessDesc")}
+              </p>
+            </div>
+          )}
+
+          {/* ── Compte désactivé : demande de réactivation ── */}
+          {accountDeactivated && !requestSent && (
+            <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-700 dark:bg-amber-500/15">
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                ⚠️ {t("auth.login.accountDeactivated")}
+              </p>
+              <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                {t("auth.login.accountDeactivatedDesc")}
+              </p>
+              <label className="mt-3 block text-sm font-medium text-amber-700 dark:text-amber-300">
+                {t("auth.login.reactivationReason")}
+                <textarea
+                  value={requestReason}
+                  onChange={(e) => setRequestReason(e.target.value)}
+                  rows={2}
+                  placeholder={t("auth.login.reactivationReasonPlaceholder")}
+                  className="mt-1 w-full rounded-lg border border-amber-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:border-amber-700 dark:bg-slate-800 dark:text-slate-200"
+                />
+              </label>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleRequestReactivation}
+                  disabled={requesting}
+                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {requesting ? t("common.loading") : t("auth.login.requestReactivation")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAccountDeactivated(false); setRequestReason(""); }}
+                  className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                >
+                  {t("profile.cancel")}
+                </button>
+              </div>
+            </div>
+          )}
+
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               {t("auth.login.phone")}
@@ -80,9 +172,9 @@ export function LoginPage() {
               />
             </label>
 
-            {error && (
+            {(error || bannedError) && (
               <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/15 dark:text-red-300" role="alert">
-                {error}
+                {error || bannedError}
               </p>
             )}
 

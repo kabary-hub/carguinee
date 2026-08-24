@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
 import { StatusBadge } from "../StatusBadge";
 import { BookingDetailsModal } from "../client/BookingDetailsModal";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { printBookingList } from "../../lib/printUtils";
-import type { Booking } from "../../lib/domain";
-import { formatDate, formatGnf } from "../../lib/domain";
+import { formatDate, formatGnf, type Booking } from "../../lib/domain";
 
 type BookingResult = {
   items: Booking[];
@@ -26,10 +26,7 @@ export function AdminBookingsTab({ initialStatusFilter = "" }: Props) {
   const { t } = useTranslation();
   const { showToast } = useToast();
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState<BookingResult["pagination"] | null>(null);
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
@@ -43,25 +40,27 @@ const BOOKING_I18N: Record<string, string> = {
   REJETEE: "bookings.status.rejected",
 };
 
-  const loadBookings = useCallback(async () => {
-    setLoading(true);
-    try {
+  const bookingQueryKey = ["admin", "bookings", page, statusFilter];
+
+  const { data: result, isLoading: loading } = useQuery({
+    queryKey: bookingQueryKey,
+    queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
       if (statusFilter) params.set("status", statusFilter);
-      const res = await apiFetch<{ status: string; data: BookingResult }>(`/api/admin/bookings?${params}`);
-      setBookings(res.data.items);
-      setPagination(res.data.pagination);
-    } catch {
-      showToast(t("admin.bookings.loadError"), "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, showToast]);
+      return apiFetch<{ status: string; data: BookingResult }>(`/api/admin/bookings?${params}`);
+    },
+    select: (res) => res.data,
+    placeholderData: (prev) => prev,
+  });
 
-  useEffect(() => { void loadBookings(); }, [loadBookings]);
+  const bookings = result?.items ?? [];
+  const pagination = result?.pagination ?? null;
 
   // Quand on change le filtre statut, revenir à la page 1
-  useEffect(() => { setPage(1); }, [statusFilter]);
+  const handleStatusFilter = useCallback((f: string) => {
+    setStatusFilter(f);
+    setPage(1);
+  }, []);
 
   return (
     <>
@@ -74,7 +73,7 @@ const BOOKING_I18N: Record<string, string> = {
         {BOOKING_FILTERS.map((f) => (
           <button
             key={f}
-            onClick={() => setStatusFilter(f)}
+            onClick={() => handleStatusFilter(f)}
             className={`rounded-full px-3 py-1 text-xs font-bold transition ${
               statusFilter === f
                 ? "bg-emerald-600 text-white"

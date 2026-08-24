@@ -4,6 +4,12 @@ import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
 import { createReport, listReports, resolveReport, banReportedUser, suspendReportedVehicle } from "./report.service.js";
 import { extractUserId, handleRouteError, paginationQuery } from "../../lib/route-helpers.js";
 
+// ── Schémas Zod pour les query params ────────────────────────────────────────
+const reportStatusEnum = z.enum(["PENDING", "RESOLVED", "DISMISSED"]);
+const reportListQuerySchema = paginationQuery.extend({
+  status: reportStatusEnum.optional(),
+});
+
 export const reportRouter = Router();
 
 // ── Créer un signalement (utilisateur connecté) ──────────────────────────────
@@ -49,8 +55,17 @@ adminReportRouter.use(requireAuth, requireRoles("ADMIN"));
 
 // Lister les signalements
 adminReportRouter.get("/", async (request, response) => {
-  const status = typeof request.query.status === "string" ? request.query.status : undefined;
-  const { page, pageSize } = paginationQuery.parse(request.query);
+  const parsed = reportListQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    response.status(400).json({
+      status: "error",
+      message: "Paramètres invalides.",
+      details: parsed.error.flatten(),
+    });
+    return;
+  }
+
+  const { status, page, pageSize } = parsed.data;
 
   try {
     const result = await listReports({ status, page, pageSize });

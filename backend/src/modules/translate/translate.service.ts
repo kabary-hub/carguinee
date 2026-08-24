@@ -1,4 +1,5 @@
 import { env } from "../../config/env.js";
+import { logger } from "../../lib/logger.js";
 
 // ── Cache en mémoire ─────────────────────────────────────────────────────────
 interface CacheEntry {
@@ -85,7 +86,7 @@ async function callLibreTranslate(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5_000);
+  const timeoutId = setTimeout(() => controller.abort(), 60_000);
 
   try {
     const response = await fetch(`${baseUrl}/translate`, {
@@ -172,14 +173,14 @@ export async function translateText(
   const OPPOSITE: Record<string, string> = { fr: "en", en: "fr", es: "en", de: "en" };
   if (result.detectedLang === targetLang) {
     const forcedSource = OPPOSITE[targetLang] ?? "en";
-    console.log(`[translate] détecté=${result.detectedLang} = cible=${targetLang}. Retry avec source forcée="${forcedSource}".`);
+    logger.debug({ detected: result.detectedLang, target: targetLang, forcedSource }, "[translate] Retry avec source forcée");
     result = await callLibreTranslate(textForDetection, targetLang, forcedSource);
   }
 
   // Si le résultat est identique au source → mauvaise détection, retry
   if (result.translatedText.trim().toLowerCase() === textForDetection.trim().toLowerCase()) {
     const forcedSource = result.detectedLang === "en" ? "fr" : "en";
-    console.log(`[translate] noop (result = source). Retry avec source="${forcedSource}", target="${targetLang}".`);
+    logger.debug({ forcedSource, target: targetLang }, "[translate] noop (result = source). Retry");
     result = await callLibreTranslate(textForDetection, targetLang, forcedSource);
   }
 

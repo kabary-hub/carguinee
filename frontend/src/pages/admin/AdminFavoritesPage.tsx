@@ -131,7 +131,7 @@ export function AdminFavoritesPage() {
                   {/* Photo véhicule */}
                   <div className="h-20 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-600 dark:from-slate-900 dark:to-slate-700">
                     {photo ? (
-                      <img src={photo} alt={`${fav.vehicle.brand} ${fav.vehicle.model}`} className="h-full w-full object-cover" />
+                      <img src={photo} alt={`${fav.vehicle.brand} ${fav.vehicle.model}`} loading="lazy" className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-2xl">🚗</div>
                     )}

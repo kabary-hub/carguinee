@@ -5,8 +5,7 @@ import { apiFetch } from "../../lib/api";
 import { useToast } from "../../contexts/ToastContext";
 import { StatusBadge } from "../StatusBadge";
 import { printVehicleList } from "../../lib/printUtils";
-import type { Vehicle } from "../../lib/domain";
-import { formatGnf } from "../../lib/domain";
+import { formatGnf, type Vehicle } from "../../lib/domain";
 
 type Props = {
   status: string;

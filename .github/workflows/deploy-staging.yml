@@ -1,0 +1,165 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+env:
+  STAGING_HOST: ${{ secrets.STAGING_HOST }}
+  STAGING_USER: ${{ secrets.STAGING_USER }}
+  STAGING_PATH: /var/www/carguinee-staging
+  NODE_ENV: staging
+
+jobs:
+  # ── Quality Gate ──────────────────────────────────────────────────────────
+  quality:
+    name: Quality Gate (tests + lint + build)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: carguinee_ci
+          POSTGRES_PASSWORD: carguinee_ci
+          POSTGRES_DB: carguinee_staging
+        ports: [5432:5432]
+        options: >-
+          --health-cmd="pg_isready -U carguinee_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DATABASE_URL: postgresql://carguinee_ci:carguinee_ci@localhost:5432/carguinee_staging
+      JWT_SECRET: staging-test-secret-key-that-is-at-least-32-characters
+      ENCRYPTION_KEY: aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344
+      RESEND_API_KEY: re_test_placeholder
+      CORS_ORIGIN: https://staging.carguinee.com
+      PORT: 3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Backend ──
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+
+      - name: Backend — install
+        working-directory: backend
+        run: npm ci
+
+      - name: Backend — generate + push schema
+        working-directory: backend
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+
+      - name: Backend — typecheck
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      - name: Backend — tests
+        working-directory: backend
+        run: npm test
+
+      - name: Backend — build
+        working-directory: backend
+        run: npx tsc
+
+      # ── Frontend ──
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+
+      - name: Frontend — install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend — typecheck + lint
+        working-directory: frontend
+        run: |
+          npx tsc -b
+          npm run lint
+
+      - name: Frontend — tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Frontend — build
+        working-directory: frontend
+        run: npx vite build
+
+  # ── Deploy to Staging ─────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Staging
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ env.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Backup current deployment
+        run: |
+          ssh ${{ env.STAGING_USER }}@${{ env.STAGING_HOST }} \
+            "cd ${{ env.STAGING_PATH }} && \
+             tar -czf /tmp/carguinee-backup-$(date +%Y%m%d-%H%M%S).tar.gz \
+             backend/dist frontend/dist backend/prisma/migrations 2>/dev/null || true"
+
+      - name: Push code to server
+        run: |
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude '*.tar.gz' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ ${{ env.STAGING_USER }}@${{ env.STAGING_HOST }}:${{ env.STAGING_PATH }}/
+
+      - name: Deploy (install + migrate + build)
+        run: |
+          ssh ${{ env.STAGING_USER }}@${{ env.STAGING_HOST }} \
+            "cd ${{ env.STAGING_PATH }} && \
+             echo '── Installing backend deps ──' && \
+             cd backend && npm ci --omit=dev && \
+             echo '── Running migrations ──' && \
+             npx prisma migrate deploy && \
+             npx prisma generate && \
+             echo '── Building backend ──' && \
+             npx tsc && \
+             echo '── Installing frontend deps ──' && \
+             cd ../frontend && npm ci --omit=dev && \
+             echo '── Building frontend ──' && \
+             npx vite build && \
+             echo '── Restarting services ──' && \
+             cd .. && \
+             pm2 restart carguinee-backend --update-env && \
+             echo '── Deploy complete ✅ ──'"
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.carguinee.com/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Staging is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Waiting... (attempt $i, status: $STATUS)"
+            sleep 5
+          done
+          echo "❌ Health check failed"
+          exit 1
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Staging deployment failed! Run rollback if needed."

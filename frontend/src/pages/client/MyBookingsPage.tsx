@@ -9,8 +9,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
-import type { ApiResponse, Booking } from "../../lib/domain";
-import { formatDate, formatGnf } from "../../lib/domain";
+import { formatDate, formatGnf, type ApiResponse, type Booking } from "../../lib/domain";
 import { getHomeRouteForRole } from "../../lib/roles";
 
 export function MyBookingsPage() {

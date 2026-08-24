@@ -99,8 +99,16 @@ favoriteRouter.get("/check-batch", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
 
-  const idsParam = typeof request.query.ids === "string" ? request.query.ids : "";
-  const vehicleIds = idsParam
+  const batchQuerySchema = z.object({
+    ids: z.string().min(1),
+  });
+  const parsed = batchQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    response.status(400).json({ status: "error", message: "Paramètre 'ids' requis (IDs séparés par des virgules)." });
+    return;
+  }
+
+  const vehicleIds = parsed.data.ids
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0)

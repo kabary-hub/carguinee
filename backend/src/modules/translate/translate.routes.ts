@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";
 import { translateText } from "./translate.service.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
+import { logger } from "../../lib/logger.js";
 
 export const translateRouter = Router();
 
@@ -45,7 +46,7 @@ translateRouter.post("/translate-message", requireAuth, async (request, response
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur de traduction.";
-    console.error("[translate] Erreur:", message);
+    logger.error({ error }, "[translate] Erreur de traduction");
     response.status(502).json({ status: "error", message });
   }
 });

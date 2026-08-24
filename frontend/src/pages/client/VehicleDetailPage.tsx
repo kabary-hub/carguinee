@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useState, useCallback, useMemo, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { VehicleGallery } from "../../components/client/VehicleGallery";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -9,7 +9,7 @@ import { RatingStars } from "../../components/client/RatingStars";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
-import type { ApiResponse, Vehicle } from "../../lib/domain";
+import type { ApiResponse, Vehicle, Booking } from "../../lib/domain";
 
 import { VehicleInfoSection } from "../../components/vehicle/VehicleInfoSection";
 import { VehicleDocumentsSection } from "../../components/vehicle/VehicleDocumentsSection";
@@ -52,19 +52,13 @@ export function VehicleDetailPage() {
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
 
-  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [lang, setLang] = useState(i18n.language?.startsWith("en") ? "en" : "fr");
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [bookingError, setBookingError] = useState("");
   const [isBooking, setIsBooking] = useState(false);
   const [showBookingConfirm, setShowBookingConfirm] = useState(false);
   const [bookingForm, setBookingForm] = useState({ startDate: "", endDate: "", notes: "" });
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewsTotal, setReviewsTotal] = useState(0);
   const [showReviewForm, setShowReviewForm] = useState(false);
-  const [completedBookingId, setCompletedBookingId] = useState<string | null>(null);
-  const [hasAlreadyReviewed, setHasAlreadyReviewed] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
 
   useEffect(() => {
@@ -73,46 +67,50 @@ export function VehicleDetailPage() {
     return () => { i18n.off("languageChanged", handler); };
   }, [i18n]);
 
-  useEffect(() => {
-    if (id) {
-      apiFetch<ApiResponse<Vehicle>>(`/api/vehicles/${id}`)
-        .then((payload) => setVehicle(payload.data))
-        .catch((reason) => setError(reason.message));
-    }
-  }, [id]);
+  // ── Vehicle ──
+  const vehicleQuery = useQuery({
+    queryKey: ["vehicle", id],
+    queryFn: () => apiFetch<ApiResponse<Vehicle>>(`/api/vehicles/${id}`),
+    enabled: !!id,
+  });
+  const vehicle = vehicleQuery.data?.data ?? null;
+  const error = vehicleQuery.error?.message ?? "";
 
-  useEffect(() => {
-    if (id) {
-      apiFetch<ApiResponse<ReviewsResponse>>(`/api/reviews/vehicle/${id}`)
-        .then((payload) => { setReviews(payload.data.items); setReviewsTotal(payload.data.pagination.total); })
-        .catch(() => {});
-    }
-  }, [id]);
+  // ── Reviews ──
+  const reviewsQuery = useQuery({
+    queryKey: ["reviews", id],
+    queryFn: () => apiFetch<ApiResponse<ReviewsResponse>>(`/api/reviews/vehicle/${id}`),
+    enabled: !!id,
+  });
+  const reviews = reviewsQuery.data?.data.items ?? [];
+  const reviewsTotal = reviewsQuery.data?.data.pagination.total ?? 0;
 
-  useEffect(() => {
-    if (id && user) {
-      apiFetch<ApiResponse<import("../lib/domain").Booking[]>>("/api/bookings/mine")
-        .then((payload) => {
-          const completed = payload.data.find((b) => b.vehicle.id === id && b.status === "TERMINEE");
-          if (completed) setCompletedBookingId(completed.id);
-        })
-        .catch(() => {});
-    }
-  }, [id, user]);
+  // ── Completed bookings (for review eligibility) ──
+  const bookingsQuery = useQuery({
+    queryKey: ["bookings", "mine"],
+    queryFn: () => apiFetch<ApiResponse<Booking[]>>("/api/bookings/mine"),
+    enabled: !!id && !!user,
+  });
+  const completedBookingId = useMemo(() => {
+    const completed = bookingsQuery.data?.data.find(
+      (b) => b.vehicle.id === id && b.status === "TERMINEE",
+    );
+    return completed?.id ?? null;
+  }, [bookingsQuery.data, id]);
 
-  useEffect(() => {
-    if (completedBookingId && user && reviews.length > 0) {
-      setHasAlreadyReviewed(reviews.some((r) => r.reviewer.id === user.id));
-    }
-  }, [completedBookingId, user, reviews]);
+  // ── Derived: has already reviewed ──
+  const hasAlreadyReviewed = useMemo(
+    () => reviews.some((r) => r.reviewer.id === user?.id),
+    [reviews, user?.id],
+  );
 
-  useEffect(() => {
-    if (id && user) {
-      apiFetch<{ status: string; data: { isFavorite: boolean } }>(`/api/favorites/check/${id}`)
-        .then((response) => setIsFavorited(response.data.isFavorite))
-        .catch(() => {});
-    }
-  }, [id, user]);
+  // ── Favorite check ──
+  const favQuery = useQuery({
+    queryKey: ["favorite", id],
+    queryFn: () => apiFetch<{ status: string; data: { isFavorite: boolean } }>(`/api/favorites/check/${id}`),
+    enabled: !!id && !!user,
+  });
+  const isFavorited = favQuery.data?.data.isFavorite ?? false;
 
   const getDescription = useCallback((v: Vehicle) => {
     if (lang === "en" && v.descriptionEn) return v.descriptionEn;
@@ -161,7 +159,7 @@ export function VehicleDetailPage() {
   const reserve = async () => {
     setShowBookingConfirm(false);
     setIsBooking(true);
-    setMessage(""); setError("");
+    setMessage(""); setBookingError("");
     try {
       await apiFetch("/api/bookings", {
         method: "POST",
@@ -170,7 +168,7 @@ export function VehicleDetailPage() {
       showToast(t("bookings.bookingRequestSent"));
       setMessage(t("bookings.bookingRequestSent"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("bookings.bookingImpossible"));
+      setBookingError(reason instanceof Error ? reason.message : t("bookings.bookingImpossible"));
       showToast(reason instanceof Error ? reason.message : t("bookings.bookingImpossible"), "error");
     } finally {
       setIsBooking(false);
@@ -247,7 +245,7 @@ export function VehicleDetailPage() {
             <VehicleOwnerSection vehicle={vehicle} contactOwner={contactOwner} />
             <VehicleReviewsSection reviews={reviews} reviewsTotal={reviewsTotal} user={user} completedBookingId={completedBookingId} hasAlreadyReviewed={hasAlreadyReviewed} showReviewForm={showReviewForm} setShowReviewForm={setShowReviewForm} setHasAlreadyReviewed={setHasAlreadyReviewed} />
           </div>
-          <BookingSidebar vehicle={vehicle} user={user} isBooking={isBooking} message={message} error={error} openBookingConfirm={openBookingConfirm} setShowReportDialog={setShowReportDialog} />
+          <BookingSidebar vehicle={vehicle} user={user} isBooking={isBooking} message={message} error={bookingError} openBookingConfirm={openBookingConfirm} setShowReportDialog={setShowReportDialog} />
         </div>
       </main>
 

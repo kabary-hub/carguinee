@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
 import { printUserCard, printUserList } from "../../lib/printUtils";
@@ -28,10 +29,7 @@ export function AdminUsersTab({ initialRoleFilter = "", toggleUserRole, toggleUs
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState<UserResult["pagination"] | null>(null);
   const [roleFilter, setRoleFilter] = useState(initialRoleFilter);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   /** Clé de rafraîchissement — incrémentée après chaque mutation pour re-fetcher */
@@ -43,25 +41,27 @@ export function AdminUsersTab({ initialRoleFilter = "", toggleUserRole, toggleUs
     ADMIN: t("admin.users.roleAdmin"),
   };
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    try {
+  const userQueryKey = ["admin", "users", page, roleFilter, refreshKey];
+
+  const { data: result, isLoading: loading } = useQuery({
+    queryKey: userQueryKey,
+    queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
       if (roleFilter) params.set("role", roleFilter);
-      const res = await apiFetch<{ status: string; data: UserResult }>(`/api/admin/users?${params}`);
-      setUsers(res.data.items);
-      setPagination(res.data.pagination);
-    } catch {
-      showToast("Erreur lors du chargement des utilisateurs.", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, roleFilter, showToast, refreshKey]);
+      return apiFetch<{ status: string; data: UserResult }>(`/api/admin/users?${params}`);
+    },
+    select: (res) => res.data,
+    placeholderData: (prev) => prev,
+  });
 
-  useEffect(() => { void loadUsers(); }, [loadUsers]);
+  const users = result?.items ?? [];
+  const pagination = result?.pagination ?? null;
 
   // Quand on change le filtre rôle, revenir à la page 1
-  useEffect(() => { setPage(1); }, [roleFilter]);
+  const handleRoleFilter = useCallback((f: string) => {
+    setRoleFilter(f);
+    setPage(1);
+  }, []);
 
   /** Incrémenter le refreshKey après une mutation pour re-fetcher la liste */
   const triggerRefresh = useCallback(() => {
@@ -92,7 +92,7 @@ export function AdminUsersTab({ initialRoleFilter = "", toggleUserRole, toggleUs
         {ROLE_FILTERS.map((f) => (
           <button
             key={f}
-            onClick={() => setRoleFilter(f)}
+            onClick={() => handleRoleFilter(f)}
             className={`rounded-full px-3 py-1 text-xs font-bold transition ${
               roleFilter === f
                 ? "bg-emerald-600 text-white"

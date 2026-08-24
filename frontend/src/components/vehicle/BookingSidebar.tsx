@@ -1,7 +1,6 @@
 import type { FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { formatGnf } from "../../lib/domain";
-import type { Vehicle } from "../../lib/domain";
+import { formatGnf, type Vehicle } from "../../lib/domain";
 import type { AuthUser } from "../../types/auth";
 
 type Props = {

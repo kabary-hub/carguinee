@@ -92,7 +92,7 @@ export function ReportDetailsModal({
           )}
           {detail(
             t("admin.reports.colDate"),
-            new Date(report.createdAt).toLocaleDateString("fr-FR", {
+            new Date(report.createdAt).toLocaleString("fr-FR", {
               dateStyle: "medium",
               timeStyle: "short",
             }),
