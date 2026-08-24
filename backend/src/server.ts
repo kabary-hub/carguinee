@@ -8,6 +8,8 @@ import { prisma } from "./lib/prisma.js";
 import { env } from "./config/env.js";
 import { adminRouter } from "./modules/admin/admin.routes.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
+import { rgpdRouter } from "./modules/auth/rgpd.routes.js";
+import { reactivationRouter } from "./modules/auth/reactivation.routes.js";
 import { bookingRouter } from "./modules/bookings/booking.routes.js";
 import { ownerRequestRouter } from "./modules/owner-requests/owner-request.routes.js";
 import { vehicleRouter } from "./modules/vehicles/vehicle.routes.js";
@@ -22,7 +24,9 @@ import { translateRouter } from "./modules/translate/translate.routes.js";
 import { standardLimiter } from "./lib/rate-limiter.js";
 import { logger, requestLogger } from "./lib/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import { securityHeaders } from "./middleware/securityHeaders.js";
+import { securityHeaders, cspReportHandler } from "./middleware/securityHeaders.js";
+import { setCsrfCookie, validateCsrf, refreshCsrf } from "./middleware/csrf.js";
+import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 import { initSentry } from "./lib/sentry.js";
@@ -55,26 +59,32 @@ app.use(cors({
     }
     callback(new Error("Origine non autorisée par la politique CORS."));
   },
+  credentials: true,
 }));
 app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
+app.use(cookieParser());
+app.use(setCsrfCookie);
 app.use(requestLogger);
 
 // Les photos téléversées (backend/uploads/vehicles) sont servies depuis
 // /uploads afin que le frontend puisse les afficher directement.
 app.use("/uploads", express.static(path.resolve("uploads")));
 
-app.use("/api/admin", standardLimiter, adminRouter);
+app.use("/api/admin", standardLimiter, validateCsrf, adminRouter);
+app.post("/api/auth/csrf-refresh", refreshCsrf);
 app.use("/api/auth", standardLimiter, authRouter);
-app.use("/api/bookings", standardLimiter, bookingRouter);
-app.use("/api/owner-requests", standardLimiter, ownerRequestRouter);
-app.use("/api/vehicles", standardLimiter, vehicleRouter);
+app.use("/api/auth", standardLimiter, reactivationRouter);
+app.use("/api/auth", standardLimiter, rgpdRouter);
+app.use("/api/bookings", standardLimiter, validateCsrf, bookingRouter);
+app.use("/api/owner-requests", standardLimiter, validateCsrf, ownerRequestRouter);
+app.use("/api/vehicles", standardLimiter, validateCsrf, vehicleRouter);
 app.use("/api/vehicles", standardLimiter, vehiclePhotoRouter);
-app.use("/api/reviews", standardLimiter, reviewRouter);
-app.use("/api/favorites", standardLimiter, favoriteRouter);
-app.use("/api/notifications", standardLimiter, notificationRouter);
-app.use("/api/messages", standardLimiter, chatRouter);
-app.use("/api/contracts", standardLimiter, contractRouter);
+app.use("/api/reviews", standardLimiter, validateCsrf, reviewRouter);
+app.use("/api/favorites", standardLimiter, validateCsrf, favoriteRouter);
+app.use("/api/notifications", standardLimiter, validateCsrf, notificationRouter);
+app.use("/api/messages", standardLimiter, validateCsrf, chatRouter);
+app.use("/api/contracts", standardLimiter, validateCsrf, contractRouter);
 app.use("/api/reports", standardLimiter, reportRouter);
 app.use("/api/admin/reports", standardLimiter, adminReportRouter);
 app.use("/api", standardLimiter, translateRouter);
@@ -88,6 +98,9 @@ app.get("/api/docs.json", (_request, response) => {
   response.setHeader("Content-Type", "application/json");
   response.send(swaggerSpec);
 });
+
+app.post("/api/csp-report", express.json({ type: "application/csp-report" }), cspReportHandler);
+app.post("/api/csp-report", express.json({ type: "application/reports+json" }), cspReportHandler);
 
 app.get("/api/health", async (_request, response) => {
   try {
