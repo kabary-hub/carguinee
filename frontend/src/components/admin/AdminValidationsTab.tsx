@@ -1,6 +1,10 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { StatusBadge } from "../StatusBadge";
+import { VehicleStatusModal } from "./VehicleStatusModal";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
 import type { AdminStats, Vehicle, OwnerRequest, PendingAction } from "./adminTypes";
 import { formatGnf } from "../../lib/domain";
 
@@ -11,30 +15,31 @@ type Props = {
   getDescription: (v: Vehicle) => string;
   setPendingAction: (action: PendingAction) => void;
   setActiveTab: (tab: "stats" | "users" | "bookings" | "reports") => void;
-  setBookingFilter: (filter: string) => void;
+  setRoleFilter: (role: string) => void;
+  setBookingStatusFilter: (status: string) => void;
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  BROUILLON: "Brouillon",
-  EN_ATTENTE_VALIDATION: "En attente",
-  PUBLIEE: "Publiée",
-  REJETEE: "Rejetée",
-  ARCHIVEE: "Archivée",
+const STATUS_I18N: Record<string, string> = {
+  BROUILLON: "vehicles.status.draft",
+  EN_ATTENTE_VALIDATION: "vehicles.status.pendingValidation",
+  PUBLIEE: "vehicles.status.published",
+  REJETEE: "vehicles.status.rejected",
+  ARCHIVEE: "vehicles.status.archived",
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  CLIENT: "Client",
-  PROPRIETAIRE: "Propriétaire",
-  ADMIN: "Admin",
+const ROLE_I18N: Record<string, string> = {
+  CLIENT: "admin.users.roleClient",
+  PROPRIETAIRE: "admin.users.roleOwner",
+  ADMIN: "admin.users.roleAdmin",
 };
 
-const BOOKING_STATUS_LABELS: Record<string, string> = {
-  EN_ATTENTE: "En attente",
-  CONFIRMEE: "Confirmée",
-  EN_COURS: "En cours",
-  TERMINEE: "Terminée",
-  ANNULEE: "Annulée",
-  REJETEE: "Rejetée",
+const BOOKING_I18N: Record<string, string> = {
+  EN_ATTENTE: "bookings.status.pending",
+  CONFIRMEE: "bookings.status.confirmed",
+  EN_COURS: "bookings.status.inProgress",
+  TERMINEE: "bookings.status.completed",
+  ANNULEE: "bookings.status.cancelled",
+  REJETEE: "bookings.status.rejected",
 };
 
 export function AdminValidationsTab({
@@ -44,10 +49,49 @@ export function AdminValidationsTab({
   getDescription,
   setPendingAction,
   setActiveTab,
-  setBookingFilter,
+  setRoleFilter,
+  setBookingStatusFilter,
 }: Props) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
+  const [selectedVehicleStatus, setSelectedVehicleStatus] = useState<string | null>(null);
+  const [adminFavorites, setAdminFavorites] = useState<Record<string, boolean>>({});
   const totalBookings = Object.values(stats.bookingsByStatus).reduce((s, v) => s + v, 0);
+
+  // ── Charger le statut favori pour les véhicules en attente ──
+  const loadFavorites = useCallback(async () => {
+    if (pendingVehicles.length === 0) return;
+    try {
+      const ids = pendingVehicles.map((v) => v.id).join(",");
+      const res = await apiFetch<{ status: string; data: Record<string, boolean> }>(
+        `/api/favorites/check-batch?ids=${ids}`,
+      );
+      setAdminFavorites(res.data);
+    } catch {
+      // silencieux — pas bloquant
+    }
+  }, [pendingVehicles]);
+
+  useEffect(() => { void loadFavorites(); }, [loadFavorites]);
+
+  // ── Toggle favori admin ──
+  const toggleFavorite = useCallback(async (vehicleId: string) => {
+    const isFav = adminFavorites[vehicleId];
+    try {
+      if (isFav) {
+        await apiFetch(`/api/favorites/${vehicleId}`, { method: "DELETE" });
+      } else {
+        await apiFetch("/api/favorites", {
+          method: "POST",
+          body: JSON.stringify({ vehicleId }),
+        });
+      }
+      setAdminFavorites((prev) => ({ ...prev, [vehicleId]: !isFav }));
+      showToast(isFav ? t("admin.dashboard.favoriteRemoved") : t("admin.dashboard.favoriteAdded"));
+    } catch (reason) {
+      showToast(reason instanceof Error ? reason.message : t("admin.dashboard.actionImpossible"), "error");
+    }
+  }, [adminFavorites, showToast, t]);
 
   return (
     <>
@@ -59,16 +103,16 @@ export function AdminValidationsTab({
           </h2>
           <div className="mt-3 space-y-1">
             {Object.entries(stats.vehiclesByStatus).map(([status, count]) => (
-              <Link
+              <button
                 key={status}
-                to={`/vehicules?status=${status}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => setSelectedVehicleStatus(status)}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <span className="text-slate-600 dark:text-slate-400">
-                  {STATUS_LABELS[status] ?? status}
+                  {STATUS_I18N[status] ? t(STATUS_I18N[status]) : status}
                 </span>
                 <span className="font-bold">{count}</span>
-              </Link>
+              </button>
             ))}
           </div>
         </div>
@@ -78,16 +122,16 @@ export function AdminValidationsTab({
           </h2>
           <div className="mt-3 space-y-1">
             {Object.entries(stats.usersByRole).map(([role, count]) => (
-              <Link
+              <button
                 key={role}
-                to={`/administration?tab=users&role=${role}`}
-                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                onClick={() => { setActiveTab("users"); setRoleFilter(role); }}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <span className="text-slate-600 dark:text-slate-400">
-                  {ROLE_LABELS[role] ?? role}
+                  {ROLE_I18N[role] ? t(ROLE_I18N[role]) : role}
                 </span>
                 <span className="font-bold">{count}</span>
-              </Link>
+              </button>
             ))}
           </div>
         </div>
@@ -99,11 +143,11 @@ export function AdminValidationsTab({
             {Object.entries(stats.bookingsByStatus).map(([status, count]) => (
               <button
                 key={status}
-                onClick={() => { setActiveTab("bookings"); setBookingFilter(status); }}
+                onClick={() => { setActiveTab("bookings"); setBookingStatusFilter(status); }}
                 className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800"
               >
                 <span className="text-slate-600 dark:text-slate-400">
-                  {BOOKING_STATUS_LABELS[status] ?? status}
+                  {BOOKING_I18N[status] ? t(BOOKING_I18N[status]) : status}
                 </span>
                 <span className="font-bold">{count}</span>
               </button>
@@ -115,30 +159,30 @@ export function AdminValidationsTab({
       {/* Stats avancées V2 */}
       <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.totalRevenue !== undefined && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <button onClick={() => setActiveTab("bookings")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm text-left transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">💰 {t("admin.dashboard.stats.totalRevenue")}</p>
             <p className="mt-2 text-lg font-black break-all text-emerald-600 sm:text-2xl dark:text-emerald-400">
               {formatGnf(stats.totalRevenue)}
             </p>
-          </div>
+          </button>
         )}
         {stats.activeVehicles !== undefined && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <button onClick={() => setSelectedVehicleStatus("PUBLIEE")} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm text-left transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">🚗 {t("admin.dashboard.stats.activeVehicles")}</p>
             <p className="mt-2 text-2xl font-black">{stats.activeVehicles}</p>
-          </div>
+          </button>
         )}
         {stats.totalFavorites !== undefined && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Link to="/administration/favoris" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">❤️ {t("admin.dashboard.stats.favorites")}</p>
             <p className="mt-2 text-2xl font-black">{stats.totalFavorites}</p>
-          </div>
+          </Link>
         )}
         {stats.totalReviews !== undefined && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <Link to="/administration/avis" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">⭐ {t("admin.dashboard.stats.reviews")}</p>
             <p className="mt-2 text-2xl font-black">{stats.totalReviews}</p>
-          </div>
+          </Link>
         )}
       </section>
 
@@ -163,7 +207,7 @@ export function AdminValidationsTab({
                 <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
                   {getDescription(vehicle)}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex flex-wrap items-center gap-2">
                   <button onClick={() => setPendingAction({ type: "vehicle-approve", id: vehicle.id })} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white">
                     {t("admin.dashboard.approve")}
                   </button>
@@ -173,6 +217,17 @@ export function AdminValidationsTab({
                   <Link to={`/vehicules/${vehicle.id}`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                     {t("admin.dashboard.viewVehicle")}
                   </Link>
+                  <button
+                    onClick={() => toggleFavorite(vehicle.id)}
+                    className={`ml-auto rounded-lg px-3 py-2 text-sm font-bold transition ${
+                      adminFavorites[vehicle.id]
+                        ? "border border-red-300 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-800 dark:bg-red-500/15 dark:text-red-400 dark:hover:bg-red-500/25"
+                        : "border border-slate-300 text-slate-500 hover:border-red-300 hover:text-red-500 dark:border-slate-700 dark:text-slate-400 dark:hover:border-red-800 dark:hover:text-red-400"
+                    }`}
+                    title={adminFavorites[vehicle.id] ? t("admin.dashboard.removeFavorite") : t("admin.dashboard.addFavorite")}
+                  >
+                    {adminFavorites[vehicle.id] ? "❤️" : "🤍"}
+                  </button>
                 </div>
               </article>
             ))}
@@ -216,6 +271,13 @@ export function AdminValidationsTab({
           </div>
         </div>
       </section>
+      {/* Modal détails véhicules par statut */}
+      {selectedVehicleStatus && (
+        <VehicleStatusModal
+          status={selectedVehicleStatus}
+          onClose={() => setSelectedVehicleStatus(null)}
+        />
+      )}
     </>
   );
 }

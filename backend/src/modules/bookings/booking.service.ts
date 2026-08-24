@@ -113,12 +113,6 @@ export async function updateBookingStatus(
       `Transition invalide : ${booking.status} → ${status}.`,
     );
   }
-  // Vérifier que le dépôt est payé avant confirmation
-  if (status === "CONFIRMEE" && booking.depositStatus === "A_PAYER") {
-    throw new Error(
-      `Le dépôt de ${booking.depositAmountGnf.toLocaleString("fr-FR")} GNF doit être payé avant la confirmation.`,
-    );
-  }
   const updated = await prisma.rentalBooking.update({ where: { id: bookingId }, data: { status }, include: bookingInclude });
 
   // Notifier les parties concernées

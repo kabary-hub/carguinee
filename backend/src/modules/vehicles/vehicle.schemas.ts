@@ -59,9 +59,11 @@ export const createVehicleSchema = vehicleBaseSchema
 
 export const updateVehicleSchema = vehicleBaseSchema.partial();
 
+const publicationStatuses = ["BROUILLON", "EN_ATTENTE_VALIDATION", "PUBLIEE", "REJETEE", "ARCHIVEE"] as const;
+
 export const vehicleListQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  pageSize: z.coerce.number().int().positive().max(20).default(20),
+  pageSize: z.coerce.number().int().positive().max(100).default(20),
   search: z.string().trim().min(1).max(100).optional(),
   commune: z.enum(communes).optional(),
   type: z.enum(vehicleTypes).optional(),
@@ -69,6 +71,13 @@ export const vehicleListQuerySchema = z.object({
   supportsSale: z.enum(["true", "false"]).optional(),
   minPriceGnf: z.coerce.number().int().min(0).optional(),
   maxPriceGnf: z.coerce.number().int().min(0).optional(),
+});
+
+/** Schéma admin : accepte le filtre publicationStatus */
+export const vehicleAdminListQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(50),
+  publicationStatus: z.enum(publicationStatuses).optional(),
 });
 
 export type CreateVehicleInput = z.infer<typeof createVehicleSchema>;

@@ -17,6 +17,7 @@ export type Vehicle = {
   // Relations V2
   conditionReport?: { exteriorDamage?: string | null; paintQuality?: string | null; engineCondition?: string | null; transmissionCondition?: string | null; tireCondition?: string | null; brakeCondition?: string | null; interiorCondition?: string | null; seatsCondition?: string | null; electronicsWorking?: boolean | null; overallRating?: number | null; additionalNotes?: string | null } | null;
   _count?: { reviews?: number; favorites?: number; rentalBookings?: number };
+  adminFavorited?: boolean;
 };
 export type Booking = { id: string; startDate: string; endDate: string; dailyRateGnf: number; totalAmountGnf: number; depositAmountGnf: number; depositStatus: string; status: BookingStatus; notes?: string | null; vehicle: Vehicle; customer?: { id: string; firstName: string; lastName: string; phone: string; email?: string | null } };
 export type ApiResponse<T> = { status: "ok"; data: T };

@@ -7,6 +7,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useState, useEffect, useRef } from "react";
+import { apiFetch } from "../lib/api";
+import type { ApiResponse } from "../lib/domain";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -44,6 +46,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [mobileMenuOpen]);
 
+  // ── Badge messages non lus ──
+  const [unreadCount, setUnreadCount] = useState(0);
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchUnread = () => {
+      apiFetch<ApiResponse<{ count: number }>>("/api/messages/unread-count")
+        .then((res) => setUnreadCount(res.data.count))
+        .catch(() => {});
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15_000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
   // Fermer le menu mobile lors de la navigation
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -75,9 +93,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link
             to="/messages"
             onClick={closeMobileMenu}
-            className="rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+            className="relative rounded-lg px-3 py-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
           >
             💬 {t("nav.messages")}
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </Link>
         </>
       )}

@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -69,6 +71,70 @@ export function AdminChatsPage() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
+
+  // ── Variable déclarée AVANT handlePrint pour éviter le TDZ ──
+  const selectedConv = selectedId ? conversations.find((c) => c.id === selectedId) : null;
+
+  // ── Impression ciblée de la conversation sélectionnée ──
+  const handlePrint = useCallback(() => {
+    if (!printRef.current) return;
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Conversation - CarGuinée</title>
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; color: #1e293b; }
+          h1 { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
+          h2 { font-size: 13px; color: #64748b; margin-bottom: 16px; font-weight: 600; }
+          .msg { margin-bottom: 8px; padding: 8px 12px; border-radius: 12px; background: #f1f5f9; max-width: 85%; }
+          .msg.deleted { background: #fef2f2; border: 1px solid #fecaca; }
+          .sender { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #2563eb; letter-spacing: 0.5px; }
+          .deleted-badge { font-size: 9px; font-weight: 700; color: #dc2626; background: #fee2e2; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+          .content { font-size: 13px; margin-top: 2px; white-space: pre-wrap; }
+          .time { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+          .separator { text-align: center; font-size: 11px; color: #94a3b8; margin: 12px 0 8px; font-weight: 600; }
+          .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+          @media print {
+            body { padding: 0; }
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>💬 Conversation</h1>
+        <h2>${selectedConv ? `${selectedConv.participant1.firstName} ${selectedConv.participant1.lastName} ↔ ${selectedConv.participant2.firstName} ${selectedConv.participant2.lastName}` : ''}</h2>
+        ${messages.map((msg, idx) => {
+          const isDeleted = msg.deletedAt !== null;
+          const prevMsg = idx > 0 ? messages[idx - 1] : null;
+          const showSep = !prevMsg || !isSameDay(prevMsg.sentAt, msg.sentAt);
+          const time = new Date(msg.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          return `${showSep ? `<div class="separator">${formatDateSeparator(msg.sentAt)}</div>` : ''}
+          <div class="msg${isDeleted ? ' deleted' : ''}">
+            <div>
+              <span class="sender">${msg.sender.firstName} ${msg.sender.lastName}</span>
+              ${isDeleted ? '<span class="deleted-badge">supprimé</span>' : ''}
+            </div>
+            <div class="content">${msg.content}</div>
+            <div class="time">${time}${msg.editedAt ? ' (modifié)' : ''}</div>
+          </div>`;
+        }).join('')}
+        <div class="footer">Imprimé le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} — CarGuinée</div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 300);
+  }, [messages, selectedConv]);
 
   // ── Hooks TOUJOURS appelés (même si non-admin) ──
   useEffect(() => {
@@ -205,8 +271,6 @@ export function AdminChatsPage() {
   }
 
   // ── Vue lecture seule d'une conversation ──
-  const selectedConv = conversations.find((c) => c.id === selectedId);
-
   return (
     <AppShell>
       <main className="mx-auto flex h-[calc(100vh-200px)] max-w-3xl flex-col px-4 py-6 sm:px-6">
@@ -300,18 +364,7 @@ export function AdminChatsPage() {
                       </p>
                       {!isDeleted && (
                         <button
-                          onClick={async () => {
-                            if (!window.confirm("Supprimer ce message ?")) return;
-                            setDeletingMsgId(msg.id);
-                            try {
-                              await apiFetch(`/api/messages/messages/${msg.id}`, { method: "DELETE" });
-                              setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, deletedAt: new Date().toISOString() } : m));
-                            } catch {
-                              // Erreur silencieuse
-                            } finally {
-                              setDeletingMsgId(null);
-                            }
-                          }}
+                          onClick={() => setDeleteTargetId(msg.id)}
                           disabled={deletingMsgId === msg.id}
                           className="text-[10px] font-bold text-red-500 hover:text-red-700 dark:text-red-400"
                         >
@@ -327,10 +380,13 @@ export function AdminChatsPage() {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Zone imprimable (cachée à l'écran) */}
+        <div ref={printRef} className="hidden" />
+
         {/* Actions admin : supprimer un message / imprimer */}
         <div className="mt-4 flex items-center gap-2">
           <button
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             🖨️ Imprimer
@@ -342,6 +398,31 @@ export function AdminChatsPage() {
           👁️ Lecture seule — Les administrateurs ne peuvent pas écrire dans les conversations dont ils ne sont pas membres.
         </div>
       </main>
+
+      {/* Modale de confirmation suppression message */}
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="Supprimer ce message ?"
+        message="Cette action est irréversible. Le message sera marqué comme supprimé."
+        confirmLabel="Supprimer"
+        tone="rose"
+        onConfirm={async () => {
+          if (!deleteTargetId) return;
+          const messageId = deleteTargetId;
+          setDeleteTargetId(null);
+          setDeletingMsgId(messageId);
+          try {
+            await apiFetch(`/api/messages/messages/${messageId}`, { method: "DELETE" });
+            setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m));
+            showToast("Message supprimé.", "success");
+          } catch {
+            showToast("Impossible de supprimer le message.", "error");
+          } finally {
+            setDeletingMsgId(null);
+          }
+        }}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </AppShell>
   );
 }

@@ -47,8 +47,11 @@ export type PendingAction = {
 export type ReportItem = {
   id: string;
   reason: string;
+  description?: string | null;
   targetType: string;
+  targetId: string;
   status: string;
   createdAt: string;
-  reporter: { firstName: string; lastName: string };
+  resolvedAt?: string | null;
+  reporter: { id: string; firstName: string; lastName: string; phone?: string };
 };

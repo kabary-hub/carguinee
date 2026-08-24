@@ -101,7 +101,20 @@ chatRouter.post("/conversations", requireAuth, async (request, response) => {
   }
 });
 
-// ── Nombre de messages non lus ────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/messages/unread-count:
+ *   get:
+ *     tags: [Chat]
+ *     summary: Nombre de conversations avec messages non lus
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Nombre de conversations non lues
+ *       401:
+ *         description: Non authentifié
+ */
 chatRouter.get("/unread-count", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -110,7 +123,41 @@ chatRouter.get("/unread-count", requireAuth, async (request, response) => {
   response.json({ status: "ok", data: { count } });
 });
 
-// ── Modifier un message ─────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/messages/{messageId}:
+ *   patch:
+ *     tags: [Chat]
+ *     summary: Modifier un message
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [content]
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 5000
+ *     responses:
+ *       200:
+ *         description: Message modifié
+ *       403:
+ *         description: Non autorisé
+ *       404:
+ *         description: Message introuvable
+ */
 chatRouter.patch("/messages/:messageId", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -131,7 +178,29 @@ chatRouter.patch("/messages/:messageId", requireAuth, async (request, response) 
   }
 });
 
-// ── Supprimer un message (soft delete) ───────────────────────────────────────
+/**
+ * @swagger
+ * /api/messages/{messageId}:
+ *   delete:
+ *     tags: [Chat]
+ *     summary: Supprimer un message (soft delete)
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Message supprimé
+ *       403:
+ *         description: Non autorisé
+ *       404:
+ *         description: Message introuvable
+ */
 chatRouter.delete("/messages/:messageId", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;

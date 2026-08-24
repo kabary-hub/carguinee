@@ -31,3 +31,14 @@ export function roleLabel(role: string): string {
 }
 
 export const OWNER_ROLES: UserRole[] = ["PROPRIETAIRE"];
+
+/** Vérifie si un rôle a accès à une route donnée. */
+export function isRouteAllowedForRole(route: string, role: string): boolean {
+  const r = role.toUpperCase();
+  // Routes admin
+  if (route.startsWith("/administration")) return r === "ADMIN";
+  // Routes propriétaire
+  if (route === "/proprietaire") return r === "ADMIN" || r === "PROPRIETAIRE" || r === "OWNER";
+  // Toutes les autres routes sont accessibles à tout utilisateur connecté
+  return true;
+}

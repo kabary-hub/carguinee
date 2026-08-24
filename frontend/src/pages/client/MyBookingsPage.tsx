@@ -30,6 +30,7 @@ export function MyBookingsPage() {
   const [completeTarget, setCompleteTarget] = useState<Booking | null>(null);
   const { showToast } = useToast();
 
+  const statusFilter = searchParams.get("status") || "";
   const isOwner = user?.role === "PROPRIETAIRE" || user?.role === "ADMIN";
   const bookingsEndpoint = isOwner ? "/api/bookings/owner" : "/api/bookings/mine";
 
@@ -119,8 +120,24 @@ export function MyBookingsPage() {
           </p>
         )}
 
+        {statusFilter && (
+          <div className="mt-4 flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3 dark:bg-emerald-500/10">
+            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+              {t("common.filter")} : {statusFilter}
+            </p>
+            <button
+              onClick={() => setSearchParams({}, { replace: true })}
+              className="text-sm font-bold text-emerald-700 underline dark:text-emerald-400"
+            >
+              {t("common.cancel")}
+            </button>
+          </div>
+        )}
+
         <div className="mt-8 space-y-4">
-          {bookings.map((booking) => (
+          {bookings
+            .filter((b) => !statusFilter || b.status === statusFilter)
+            .map((booking) => (
             <article
               key={booking.id}
               onClick={() => setSelectedBooking(booking)}

@@ -163,6 +163,13 @@ export const favoriteSwagger = {
     parameters: [{ in: "path", name: "vehicleId", required: true, schema: { type: "string", format: "uuid" } }],
     responses: { "200": { description: "Statut du favori" } },
   },
+  checkBatch: {
+    tags: ["Favorites"],
+    summary: "Vérifier les favoris pour plusieurs véhicules",
+    security: [{ BearerAuth: [] }],
+    parameters: [{ in: "query", name: "ids", required: true, schema: { type: "string" }, description: "IDs séparés par des virgules (max 50)" }],
+    responses: { "200": { description: "Map vehicleId → boolean" } },
+  },
 };
 
 // ── NOTIFICATIONS ───────────────────────────────────────────────────────────
@@ -383,6 +390,85 @@ export const adminSwagger = {
     tags: ["Admin"],
     summary: "Toutes les réservations (admin)",
     security: [{ BearerAuth: [] }],
-    responses: { "200": { description: "Liste des réservations" } },
+    parameters: [
+      { in: "query", name: "page", schema: { type: "integer", default: 1 } },
+      { in: "query", name: "pageSize", schema: { type: "integer", default: 20 } },
+      { in: "query", name: "status", schema: { type: "string", enum: ["EN_ATTENTE", "CONFIRMEE", "EN_COURS", "TERMINEE", "ANNULEE", "REJETEE"] } },
+    ],
+    responses: { "200": { description: "Liste paginée des réservations" } },
+  },
+  deleteBookings: {
+    tags: ["Admin"],
+    summary: "Supprimer des réservations par statut (admin)",
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      { in: "query", name: "status", schema: { type: "string", enum: ["EN_ATTENTE", "CONFIRMEE", "EN_COURS", "TERMINEE", "ANNULEE", "REJETEE"] }, description: "Si omis, supprime toutes les réservations" },
+    ],
+    responses: { "200": { description: "Nombre de réservations supprimées" }, "500": { description: "Suppression impossible" } },
+  },
+  favorites: {
+    tags: ["Admin"],
+    summary: "Tous les favoris (admin, vue globale)",
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      { in: "query", name: "page", schema: { type: "integer", default: 1 } },
+      { in: "query", name: "pageSize", schema: { type: "integer", default: 20 } },
+      { in: "query", name: "role", schema: { type: "string", enum: ["CLIENT", "PROPRIETAIRE"] }, description: "Filtrer par rôle de l'utilisateur" },
+    ],
+    responses: { "200": { description: "Liste paginée des favoris" } },
+  },
+  reviews: {
+    tags: ["Admin"],
+    summary: "Tous les avis (admin, vue globale)",
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      { in: "query", name: "page", schema: { type: "integer", default: 1 } },
+      { in: "query", name: "pageSize", schema: { type: "integer", default: 20 } },
+      { in: "query", name: "rating", schema: { type: "integer", minimum: 1, maximum: 5 }, description: "Filtrer par note" },
+    ],
+    responses: { "200": { description: "Liste paginée des avis" } },
+  },
+};
+
+// ── VEHICLES (admin) ────────────────────────────────────────────────────────
+
+export const vehicleAdminSwagger = {
+  adminAll: {
+    tags: ["Vehicles"],
+    summary: "Liste admin des véhicules (filtrable par publicationStatus)",
+    security: [{ BearerAuth: [] }],
+    parameters: [
+      { in: "query", name: "page", schema: { type: "integer", default: 1 } },
+      { in: "query", name: "pageSize", schema: { type: "integer", default: 50 } },
+      { in: "query", name: "publicationStatus", schema: { type: "string", enum: ["BROUILLON", "EN_ATTENTE_VALIDATION", "PUBLIEE", "REJETEE", "ARCHIVEE"] } },
+    ],
+    responses: { "200": { description: "Liste paginée des véhicules" }, "403": { description: "Accès admin requis" } },
+  },
+};
+
+// ── MESSAGES (edit, delete) ─────────────────────────────────────────────────
+
+export const messageSwagger = {
+  edit: {
+    tags: ["Chat"],
+    summary: "Modifier un message",
+    security: [{ BearerAuth: [] }],
+    parameters: [{ in: "path", name: "messageId", required: true, schema: { type: "string", format: "uuid" } }],
+    requestBody: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: { type: "object", required: ["content"], properties: { content: { type: "string", minLength: 1, maxLength: 5000 } } },
+        },
+      },
+    },
+    responses: { "200": { description: "Message modifié" }, "403": { description: "Non autorisé" }, "404": { description: "Message introuvable" } },
+  },
+  delete: {
+    tags: ["Chat"],
+    summary: "Supprimer un message (soft delete)",
+    security: [{ BearerAuth: [] }],
+    parameters: [{ in: "path", name: "messageId", required: true, schema: { type: "string", format: "uuid" } }],
+    responses: { "200": { description: "Message supprimé" }, "403": { description: "Non autorisé" }, "404": { description: "Message introuvable" } },
   },
 };

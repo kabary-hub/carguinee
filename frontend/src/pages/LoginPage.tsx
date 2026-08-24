@@ -5,7 +5,7 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { PasswordInput } from "../components/PasswordInput";
 import { useAuth } from "../contexts/AuthContext";
-import { getHomeRouteForRole } from "../lib/roles";
+import { getHomeRouteForRole, isRouteAllowedForRole } from "../lib/roles";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -27,7 +27,8 @@ export function LoginPage() {
       // Redirection par rôle : on respecte une éventuelle page demandée avant
       // la connexion (état « from »), sinon on ouvre l'espace du rôle connecté.
       const from = (location.state as { from?: string } | null)?.from;
-      navigate(from ?? getHomeRouteForRole(authenticatedUser.role), {
+      const safeFrom = from && isRouteAllowedForRole(from, authenticatedUser.role) ? from : undefined;
+      navigate(safeFrom ?? getHomeRouteForRole(authenticatedUser.role), {
         replace: true,
       });
     } catch (submissionError) {

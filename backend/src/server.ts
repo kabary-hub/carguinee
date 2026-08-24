@@ -19,7 +19,7 @@ import { chatRouter } from "./modules/chat/chat.routes.js";
 import { contractRouter } from "./modules/contracts/contract.routes.js";
 import { reportRouter, adminReportRouter } from "./modules/reports/report.routes.js";
 import { translateRouter } from "./modules/translate/translate.routes.js";
-import { authLimiter, standardLimiter } from "./lib/rate-limiter.js";
+import { standardLimiter } from "./lib/rate-limiter.js";
 import { logger, requestLogger } from "./lib/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { securityHeaders } from "./middleware/securityHeaders.js";
@@ -65,7 +65,7 @@ app.use(requestLogger);
 app.use("/uploads", express.static(path.resolve("uploads")));
 
 app.use("/api/admin", standardLimiter, adminRouter);
-app.use("/api/auth", authLimiter, authRouter);
+app.use("/api/auth", standardLimiter, authRouter);
 app.use("/api/bookings", standardLimiter, bookingRouter);
 app.use("/api/owner-requests", standardLimiter, ownerRequestRouter);
 app.use("/api/vehicles", standardLimiter, vehicleRouter);

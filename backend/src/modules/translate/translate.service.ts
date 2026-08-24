@@ -85,7 +85,7 @@ async function callLibreTranslate(
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15_000);
+  const timeoutId = setTimeout(() => controller.abort(), 5_000);
 
   try {
     const response = await fetch(`${baseUrl}/translate`, {
@@ -114,7 +114,7 @@ async function callLibreTranslate(
   } catch (error: unknown) {
     clearTimeout(timeoutId);
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Timeout traduction (15s).");
+      throw new Error("Timeout traduction (5s).");
     }
     throw error;
   }

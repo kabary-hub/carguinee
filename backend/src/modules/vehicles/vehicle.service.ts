@@ -46,6 +46,42 @@ export async function createVehicle(ownerId: string, input: CreateVehicleInput) 
   });
 }
 
+type VehicleWhere = Record<string, unknown>;
+
+/**
+ * Renvoie les IDs des véhicules qui ont au moins un favori
+ * créé par un utilisateur ADMIN. Utilisé pour les afficher en priorité
+ * dans le catalogue public.
+ */
+async function getAdminFavoritedVehicleIds(
+  baseWhere: VehicleWhere,
+): Promise<string[]> {
+  const adminIds = (
+    await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    })
+  ).map((u) => u.id);
+
+  if (adminIds.length === 0) return [];
+
+  const rows = await prisma.favorite.findMany({
+    where: { userId: { in: adminIds } },
+    select: { vehicleId: true },
+  });
+
+  const allAdminFavIds = [...new Set(rows.map((r) => r.vehicleId))];
+  if (allAdminFavIds.length === 0) return [];
+
+  // On ne garde que ceux qui passent le filtre WHERE courant
+  const matching = await prisma.vehicle.findMany({
+    where: { ...baseWhere, id: { in: allAdminFavIds } },
+    select: { id: true },
+  });
+
+  return matching.map((v) => v.id);
+}
+
 export async function listPublicVehicles(query: VehicleListQuery) {
   const page = query.page;
   const pageSize = query.pageSize;
@@ -90,25 +126,63 @@ export async function listPublicVehicles(query: VehicleListQuery) {
     ],
   };
 
-  const [items, total] = await prisma.$transaction([
-    prisma.vehicle.findMany({
+  // ── Favoris admin : on les affiche en premier ─────────────────────────────
+  const adminFavoritedIds = await getAdminFavoritedVehicleIds(where);
+
+  const total = await prisma.vehicle.count({ where });
+
+  if (adminFavoritedIds.length === 0) {
+    // Aucun favori admin → requête classique
+    const items = await prisma.vehicle.findMany({
       where,
       skip,
       take: pageSize,
       orderBy: { createdAt: "desc" },
       include: vehicleInclude,
+    });
+
+    return {
+      items: items.map((v) => ({ ...v, adminFavorited: false })),
+      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+    };
+  }
+
+  // Deux requêtes : favoris admin d'abord, puis le reste
+  const whereAdminFav = { ...where, id: { in: adminFavoritedIds } };
+  const whereRegular = { ...where, id: { notIn: adminFavoritedIds } };
+
+  const adminFavTotal = await prisma.vehicle.count({ where: whereAdminFav });
+
+  const adminFavsSkip = Math.min(skip, adminFavTotal);
+  const adminFavsToTake = Math.min(pageSize, Math.max(0, adminFavTotal - adminFavsSkip));
+  const regularSkip = Math.max(0, skip - adminFavTotal);
+  const regularToTake = Math.max(0, pageSize - adminFavsToTake);
+
+  const [adminFavItems, regularItems] = await Promise.all([
+    prisma.vehicle.findMany({
+      where: whereAdminFav,
+      skip: adminFavsSkip,
+      take: adminFavsToTake,
+      orderBy: { createdAt: "desc" },
+      include: vehicleInclude,
     }),
-    prisma.vehicle.count({ where }),
+    regularToTake > 0
+      ? prisma.vehicle.findMany({
+          where: whereRegular,
+          skip: regularSkip,
+          take: regularToTake,
+          orderBy: { createdAt: "desc" },
+          include: vehicleInclude,
+        })
+      : Promise.resolve([]),
   ]);
 
   return {
-    items,
-    pagination: {
-      page,
-      pageSize,
-      total,
-      totalPages: Math.ceil(total / pageSize),
-    },
+    items: [
+      ...adminFavItems.map((v) => ({ ...v, adminFavorited: true })),
+      ...regularItems.map((v) => ({ ...v, adminFavorited: false })),
+    ],
+    pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
   };
 }
 
@@ -141,7 +215,16 @@ export async function getVehicleById(
     throw new Error("Véhicule introuvable.");
   }
 
-  return vehicle;
+  // Vérifier si un admin a mis ce véhicule en favori
+  const adminFav = await prisma.favorite.findFirst({
+    where: {
+      vehicleId,
+      user: { role: "ADMIN" },
+    },
+    select: { id: true },
+  });
+
+  return { ...vehicle, adminFavorited: !!adminFav };
 }
 
 async function ensureCanManageVehicle(vehicleId: string, userId: string, role: AuthRole) {
@@ -342,5 +425,37 @@ export async function rejectVehicle(
     },
     include: vehicleInclude,
   });
+}
+
+/**
+ * Liste admin : permet de filtrer par publicationStatus.
+ * Réservé aux admins (protégé par requireRoles dans les routes).
+ */
+export async function listAdminVehicles(
+  options: { publicationStatus?: string; page?: number; pageSize?: number } = {},
+) {
+  const { publicationStatus, page = 1, pageSize = 50 } = options;
+  const skip = (page - 1) * pageSize;
+
+  const validStatuses = ["BROUILLON", "EN_ATTENTE_VALIDATION", "PUBLIEE", "REJETEE", "ARCHIVEE"];
+  const where = publicationStatus && validStatuses.includes(publicationStatus)
+    ? { publicationStatus: publicationStatus as "BROUILLON" | "EN_ATTENTE_VALIDATION" | "PUBLIEE" | "REJETEE" | "ARCHIVEE" }
+    : {};
+
+  const [items, total] = await prisma.$transaction([
+    prisma.vehicle.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+      include: vehicleInclude,
+    }),
+    prisma.vehicle.count({ where }),
+  ]);
+
+  return {
+    items,
+    pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+  };
 }
 

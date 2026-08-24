@@ -13,8 +13,11 @@ const VehicleDetailPage = lazy(() => import("./pages/client/VehicleDetailPage").
 const ProfilePage = lazy(() => import("./pages/client/ProfilePage").then((m) => ({ default: m.ProfilePage })));
 const MyBookingsPage = lazy(() => import("./pages/client/MyBookingsPage").then((m) => ({ default: m.MyBookingsPage })));
 const OwnerDashboardPage = lazy(() => import("./pages/owner/OwnerDashboardPage").then((m) => ({ default: m.OwnerDashboardPage })));
+const AddVehiclePage = lazy(() => import("./pages/owner/AddVehiclePage").then((m) => ({ default: m.AddVehiclePage })));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })));
 const AdminChatsPage = lazy(() => import("./pages/admin/AdminChatsPage").then((m) => ({ default: m.AdminChatsPage })));
+const AdminFavoritesPage = lazy(() => import("./pages/admin/AdminFavoritesPage").then((m) => ({ default: m.AdminFavoritesPage })));
+const AdminReviewsPage = lazy(() => import("./pages/admin/AdminReviewsPage").then((m) => ({ default: m.AdminReviewsPage })));
 const FavoritesPage = lazy(() => import("./pages/client/FavoritesPage").then((m) => ({ default: m.FavoritesPage })));
 const NotificationsPage = lazy(() => import("./pages/client/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const MessagesPage = lazy(() => import("./pages/client/MessagesPage").then((m) => ({ default: m.MessagesPage })));
@@ -51,10 +54,13 @@ function App() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["PROPRIETAIRE", "ADMIN"]} />}>
           <Route path="/proprietaire" element={<OwnerDashboardPage />} />
+          <Route path="/proprietaire/ajouter" element={<AddVehiclePage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/administration" element={<AdminDashboardPage />} />
           <Route path="/administration/chats" element={<AdminChatsPage />} />
+          <Route path="/administration/favoris" element={<AdminFavoritesPage />} />
+          <Route path="/administration/avis" element={<AdminReviewsPage />} />
         </Route>
         {/* ── Pages V2 : Favoris, Notifications, Messages ── */}
         <Route element={<ProtectedRoute />}>

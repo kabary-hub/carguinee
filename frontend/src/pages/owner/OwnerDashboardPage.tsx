@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -38,6 +38,16 @@ export function OwnerDashboardPage() {
   const [photoErrors, setPhotoErrors] = useState<Record<string, string>>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const vehicleStatusFilter = searchParams.get("vehicleStatus") || "";
+
+  // Auto-scroll vers la liste des véhicules quand un filtre est actif
+  useEffect(() => {
+    if (vehicleStatusFilter && vehiclesRef.current) {
+      vehiclesRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [vehicleStatusFilter]);
+  const vehiclesRef = useRef<HTMLDivElement>(null);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const { showToast } = useToast();
@@ -51,9 +61,7 @@ export function OwnerDashboardPage() {
         setVehicles(vehicleData.data);
         setBookings(bookingData.data);
       })
-      .catch((reason: Error) => setError(reason.message));
-
-  useEffect(() => { void load(); }, []);
+      .catch((reason: Error) => setError(reason.message));  useEffect(() => { void load(); }, []);
 
   // ── Création ──
   const createVehicle = async (event: FormEvent<HTMLFormElement>) => {
@@ -92,6 +100,8 @@ export function OwnerDashboardPage() {
       showToast(reason instanceof Error ? reason.message : t("owner.vehicleForm.creationImpossible"), "error");
     }
   };
+
+
 
   // ── Édition ──
   const saveEdit = async (event: FormEvent<HTMLFormElement>, vehicle: Vehicle) => {
@@ -217,7 +227,10 @@ export function OwnerDashboardPage() {
   const pendingBookings = bookings.filter((b) => b.status === "EN_ATTENTE");
 
   // ── Véhicules visibles ──
-  const visibleVehicles = showAllVehicles ? vehicles : vehicles.slice(0, VISIBLE_VEHICLES_INITIAL);
+  const filteredVehicles = vehicleStatusFilter
+    ? vehicles.filter((v) => v.publicationStatus === vehicleStatusFilter)
+    : vehicles;
+  const visibleVehicles = showAllVehicles ? filteredVehicles : filteredVehicles.slice(0, VISIBLE_VEHICLES_INITIAL);
 
   const inputClass = "rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500";
 
@@ -235,17 +248,17 @@ export function OwnerDashboardPage() {
 
         {/* ── Statistiques cliquables (3 visibles) ── */}
         <section className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
-          <Link to="/proprietaire#vehicles" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+          <Link to="/proprietaire" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.dashboard.stats.vehicles")}</p>
             <p className="mt-2 text-3xl font-black">{vehicles.length}</p>
           </Link>
-          <Link to="/proprietaire#vehicles" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
+          <Link to="/proprietaire?vehicleStatus=EN_ATTENTE_VALIDATION" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.dashboard.stats.pending")}</p>
             <p className="mt-2 text-3xl font-black text-amber-600">{statusCounts["EN_ATTENTE_VALIDATION"] ?? 0}</p>
           </Link>
           <Link to="/reservations" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.dashboard.stats.receivedRequests")}</p>
-            <p className="mt-2 text-3xl font-black">{bookings.length}</p>
+            <p className="mt-2 text-3xl font-black">{confirmedBookings.length}</p>
             {confirmedTotalGnf > 0 && (
               <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               {formatGnf(confirmedTotalGnf)} {t("owner.dashboard.confirmed")}</p>
@@ -267,15 +280,15 @@ export function OwnerDashboardPage() {
             </h3>
             <div className="mt-4 space-y-3">
               {[
-                { label: t("owner.dashboard.charts.pending"), count: pendingBookings.length, color: "bg-amber-400" },
-                { label: t("owner.dashboard.charts.confirmed"), count: confirmedBookings.length - completedBookings.length, color: "bg-blue-400" },
-                { label: t("owner.dashboard.charts.completed"), count: completedBookings.length, color: "bg-emerald-400" },
-                { label: t("owner.dashboard.charts.cancelled"), count: bookings.filter((b) => b.status === "ANNULEE").length, color: "bg-rose-400" },
+                { label: t("owner.dashboard.charts.pending"), count: pendingBookings.length, color: "bg-amber-400", status: "EN_ATTENTE" },
+                { label: t("owner.dashboard.charts.confirmed"), count: confirmedBookings.length - completedBookings.length, color: "bg-blue-400", status: "CONFIRMEE" },
+                { label: t("owner.dashboard.charts.completed"), count: completedBookings.length, color: "bg-emerald-400", status: "TERMINEE" },
+                { label: t("owner.dashboard.charts.cancelled"), count: bookings.filter((b) => b.status === "ANNULEE").length, color: "bg-rose-400", status: "ANNULEE" },
               ].map((bar) => {
                 const maxCount = Math.max(bookings.length, 1);
                 const widthPercent = Math.round((bar.count / maxCount) * 100);
                 return (
-                  <div key={bar.label}>
+                  <Link key={bar.label} to={`/reservations?status=${bar.status}`} className="block rounded-lg px-1 py-1 transition hover:bg-slate-50 dark:hover:bg-slate-800">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-600 dark:text-slate-400">{bar.label}</span>
                       <span className="font-bold">{bar.count}</span>
@@ -283,7 +296,7 @@ export function OwnerDashboardPage() {
                     <div className="mt-1 h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800">
                       <div className={`${bar.color} h-2.5 rounded-full transition-all`} style={{ width: `${Math.max(widthPercent, 2)}%` }} />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -296,15 +309,15 @@ export function OwnerDashboardPage() {
             </h3>
             <div className="mt-4 space-y-3">
               {[
-                { label: t("owner.dashboard.charts.published"), count: statusCounts["PUBLIEE"] ?? 0, color: "bg-emerald-400" },
-                { label: t("owner.dashboard.charts.draft"), count: statusCounts["BROUILLON"] ?? 0, color: "bg-slate-400" },
-                { label: t("owner.dashboard.charts.pendingValidation"), count: statusCounts["EN_ATTENTE_VALIDATION"] ?? 0, color: "bg-amber-400" },
-                { label: t("owner.dashboard.charts.rejected"), count: statusCounts["REJETEE"] ?? 0, color: "bg-rose-400" },
+                { label: t("owner.dashboard.charts.published"), count: statusCounts["PUBLIEE"] ?? 0, color: "bg-emerald-400", status: "PUBLIEE" },
+                { label: t("owner.dashboard.charts.draft"), count: statusCounts["BROUILLON"] ?? 0, color: "bg-slate-400", status: "BROUILLON" },
+                { label: t("owner.dashboard.charts.pendingValidation"), count: statusCounts["EN_ATTENTE_VALIDATION"] ?? 0, color: "bg-amber-400", status: "EN_ATTENTE_VALIDATION" },
+                { label: t("owner.dashboard.charts.rejected"), count: statusCounts["REJETEE"] ?? 0, color: "bg-rose-400", status: "REJETEE" },
               ].map((bar) => {
                 const maxCount = Math.max(vehicles.length, 1);
                 const widthPercent = Math.round((bar.count / maxCount) * 100);
                 return (
-                  <div key={bar.label}>
+                  <Link key={bar.label} to={`/proprietaire?vehicleStatus=${bar.status}`} className="block rounded-lg px-1 py-1 transition hover:bg-slate-50 dark:hover:bg-slate-800">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-600 dark:text-slate-400">{bar.label}</span>
                       <span className="font-bold">{bar.count}</span>
@@ -312,16 +325,25 @@ export function OwnerDashboardPage() {
                     <div className="mt-1 h-2.5 w-full rounded-full bg-slate-100 dark:bg-slate-800">
                       <div className={`${bar.color} h-2.5 rounded-full transition-all`} style={{ width: `${Math.max(widthPercent, 2)}%` }} />
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 overflow-hidden lg:grid-cols-[0.8fr_1.2fr]">
-          {/* ── Formulaire création ── */}
-          <form onSubmit={createVehicle} className="h-fit overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+        {/* ── Bouton ajout mobile ── */}
+        <Link
+          to="/proprietaire/ajouter"
+          className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-4 text-base font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:hidden"
+        >
+          ➕ {t("owner.dashboard.addVehicle")}
+        </Link>
+
+        {/* ── Formulaire ajout desktop + Liste véhicules ── */}
+        <section ref={vehiclesRef} className="mt-8 grid gap-6 overflow-hidden scroll-mt-6 lg:grid-cols-[0.8fr_1.2fr] sm:grid">
+          {/* ── Formulaire création (desktop uniquement) ── */}
+          <form onSubmit={createVehicle} className="hidden h-fit overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:block sm:p-5 dark:border-slate-800 dark:bg-slate-900">
             <h2 className="text-lg font-black">{t("owner.dashboard.addVehicle")}</h2>
             <div className="mt-4 grid gap-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -399,7 +421,17 @@ export function OwnerDashboardPage() {
 
           {/* ── Liste véhicules (3 visibles + Voir plus) ── */}
           <div>
-            <h2 className="text-lg font-black">{t("owner.dashboard.myVehicles")}</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black">{t("owner.dashboard.myVehicles")}</h2>
+              {vehicleStatusFilter && (
+                <button
+                  onClick={() => { setSearchParams({}, { replace: true }); setShowAllVehicles(false); }}
+                  className="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400"
+                >
+                  ✕ {t("common.cancel")}
+                </button>
+              )}
+            </div>
             <div className="mt-4 space-y-3">
               {visibleVehicles.map((vehicle) => {
                 const remaining = MAX_PHOTOS - vehicle.photos.length;
@@ -541,16 +573,16 @@ export function OwnerDashboardPage() {
                 );
               })}
 
-              {vehicles.length === 0 && (
+              {filteredVehicles.length === 0 && (
                 <p className="rounded-xl bg-slate-100 p-5 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-400">{t("owner.dashboard.noVehicles")}</p>
               )}
 
-              {vehicles.length > VISIBLE_VEHICLES_INITIAL && !showAllVehicles && (
+              {filteredVehicles.length > VISIBLE_VEHICLES_INITIAL && !showAllVehicles && (
                 <button onClick={() => setShowAllVehicles(true)} className="w-full rounded-xl border border-slate-300 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
-                  {t("owner.dashboard.showAll", { count: vehicles.length })}
+                  {t("owner.dashboard.showAll", { count: filteredVehicles.length })}
                 </button>
               )}
-              {showAllVehicles && vehicles.length > VISIBLE_VEHICLES_INITIAL && (
+              {showAllVehicles && filteredVehicles.length > VISIBLE_VEHICLES_INITIAL && (
                 <button onClick={() => { setShowAllVehicles(false); }} className="w-full rounded-xl border border-slate-300 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
                   {t("owner.dashboard.reduce")}
                 </button>
@@ -563,8 +595,8 @@ export function OwnerDashboardPage() {
         <section className="mt-10">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black">{t("owner.dashboard.receivedBookings")}</h2>
-            <a href="/reservations" className="text-sm font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
-              {t("owner.dashboard.viewAllBookings")}
+            <a href="/reservations" className="flex items-center gap-1 text-sm font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
+              {t("owner.dashboard.allBookings")} →
             </a>
           </div>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">

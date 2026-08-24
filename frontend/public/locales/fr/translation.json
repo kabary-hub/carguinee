@@ -17,6 +17,7 @@
     "reject": "Rejeter",
     "backToHome": "← Retour à l'accueil",
     "backToMySpace": "← Retour à mon espace",
+    "previous": "← Précédent",
     "perDay": "/ jour",
     "perDayWithCondition": "/ jour · {{condition}} · {{year}}",
     "unknownYear": "année inconnue",
@@ -224,6 +225,7 @@
       "odometerGuaranteedYes": "✅ Oui",
       "odometerGuaranteedNo": "❌ Non"
     },
+    "adminFavorite": "Recommandé",
     "status": {
       "draft": "Brouillon",
       "pendingValidation": "En attente de validation",
@@ -257,7 +259,6 @@
     "confirmDepositPaidMessage": "Confirmez que vous avez payé le dépôt de {{amount}} pour {{brand}} {{model}} ?",
     "depositPaidSuccess": "Dépôt marqué comme payé.",
     "depositPaidError": "Impossible de marquer le dépôt comme payé.",
-    "confirmBooking": "Confirmer",
     "confirmBookingOwnerMessage": "Voulez-vous confirmer la réservation du {{brand}} {{model}} par {{customer}} ?",
     "rejectBooking": "Rejeter",
     "rejectBookingOwnerMessage": "Voulez-vous rejeter la réservation du {{brand}} {{model}} par {{customer}} ?",
@@ -316,6 +317,7 @@
       "recentBookings": "Réservations récentes",
       "receivedBookings": "Réservations reçues",
       "viewAllBookings": "Voir toutes les réservations →",
+      "allBookings": "Toutes les réservations",
       "bookingsCount": "{{count}} demande(s) de réservation au total. Consultez la page Réservations pour plus de détails.",
       "confirmed": "confirmés",
       "noVehicles": "Créez votre premier véhicule pour commencer.",
@@ -383,6 +385,12 @@
       "carteGrisePresent": "Carte grise présente ?",
       "visiteTechniqueValidUntil": "Visite technique valide jusqu'au",
       "assuranceValidUntil": "Assurance valide jusqu'au"
+    },
+    "addVehicle": {
+      "unsavedTitle": "Données non enregistrées",
+      "unsavedMessage": "Vous avez commencé à remplir le formulaire. Si vous quittez maintenant, les données saisies seront perdues.",
+      "continueFilling": "Continuer la saisie",
+      "quitAnyway": "Quitter"
     }
   },
   "admin": {
@@ -430,8 +438,44 @@
       "ownerRequestApproved": "Demande propriétaire approuvée.",
       "ownerRequestRejected": "Demande propriétaire rejetée.",
       "actionImpossible": "Action impossible.",
+      "addFavorite": "Ajouter aux favoris",
+      "removeFavorite": "Retirer des favoris",
+      "favoriteAdded": "Ajouté aux favoris admin.",
+      "favoriteRemoved": "Retiré des favoris admin.",
       "reportsTitle": "Signalements ({{count}})",
-      "noReports": "Aucun signalement pour le moment."
+      "noReports": "Aucun signalement pour le moment.",
+      "loadError": "Erreur de chargement."
+    },
+    "reports": {
+      "detailsTitle": "Détails du signalement",
+      "colReason": "Motif",
+      "colTargetType": "Type cible",
+      "colTargetId": "ID cible",
+      "colDate": "Date",
+      "description": "Description",
+      "colReporter": "Signalé par",
+      "resolve": "Résoudre",
+      "dismiss": "Rejeter",
+      "banUser": "Bannir l'utilisateur",
+      "suspendVehicle": "Suspendre le véhicule",
+      "viewVehicle": "Voir le véhicule",
+      "viewProfile": "Voir le profil",
+      "copyUserId": "Copier l'ID utilisateur",
+      "idCopied": "ID copié dans le presse-papier",
+      "targetVehicle": "Véhicule",
+      "targetUser": "Utilisateur",
+      "targetBooking": "Réservation",
+      "resolved": "Signalement résolu.",
+      "dismissed": "Signalement rejeté.",
+      "userBanned": "Utilisateur banni.",
+      "vehicleSuspended": "Véhicule suspendu.",
+      "resolveError": "Erreur lors de la résolution.",
+      "dismissError": "Erreur lors du rejet.",
+      "actionError": "Une erreur est survenue.",
+      "banUserTitle": "Bannir cet utilisateur ?",
+      "banUserMessage": "Son compte sera désactivé et il ne pourra plus se connecter.",
+      "suspendVehicleTitle": "Suspendre ce véhicule ?",
+      "suspendVehicleMessage": "Sa publication sera archivée et il ne sera plus visible sur l'application."
     },
     "users": {
       "title": "Gestion des utilisateurs",
@@ -461,14 +505,24 @@
       "filterByStatus": "Filtrer par statut :",
       "all": "Toutes",
       "noBookingsFound": "Aucune réservation trouvée.",
+      "loadError": "Erreur lors du chargement des réservations.",
       "bookingCount": "{{count}} réservation(s) affichée(s).",
+      "paginationInfo": "{{total}} réservation(s) — Page {{page}}/{{totalPages}}",
       "colVehicle": "Véhicule",
       "colClient": "Client",
       "colOwner": "Propriétaire",
       "colPeriod": "Période",
       "colAmount": "Montant",
       "colStatus": "Statut"
-    }
+    },
+    "printList": "Imprimer la liste",
+    "printCard": "Imprimer la fiche",
+    "deleteAll": "Tout supprimer",
+    "deleteAllBookingsTitle": "Supprimer les réservations",
+    "deleteAllBookingsMessage": "Voulez-vous vraiment supprimer {{count}} réservation(s) ? Cette action est irréversible.",
+    "confirmDeleteAll": "Supprimer",
+    "bookingsDeleted": "Réservations supprimées.",
+    "deleteError": "Erreur lors de la suppression."
   },
   "profile": {
     "title": "Mon profil",

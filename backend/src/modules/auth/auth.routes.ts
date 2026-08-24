@@ -7,7 +7,7 @@ import { requireAuth } from "./auth.middleware.js";
 import { login, register } from "./auth.service.js";
 import { loginSchema, registerSchema } from "./auth.schemas.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
-import { strictLimiter } from "../../lib/rate-limiter.js";
+import { strictLimiter, authLimiter } from "../../lib/rate-limiter.js";
 import { logger } from "../../lib/logger.js";
 import { sendPasswordResetEmail } from "../../lib/email.js";
 
@@ -66,7 +66,7 @@ export const authRouter = Router();
  *       409:
  *         description: Téléphone ou email déjà utilisé
  */
-authRouter.post("/register", async (request, response) => {
+authRouter.post("/register", authLimiter, async (request, response) => {
   const parsed = registerSchema.safeParse(request.body);
 
   if (!parsed.success) {
@@ -131,7 +131,7 @@ authRouter.post("/register", async (request, response) => {
  *       401:
  *         description: Identifiants invalides
  */
-authRouter.post("/login", async (request, response) => {
+authRouter.post("/login", authLimiter, async (request, response) => {
   const parsed = loginSchema.safeParse(request.body);
 
   if (!parsed.success) {

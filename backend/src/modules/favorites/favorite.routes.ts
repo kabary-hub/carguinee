@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";
 import { addFavorite, removeFavorite, listFavorites, isFavorite } from "./favorite.service.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
+import { prisma } from "../../lib/prisma.js";
 
 export const favoriteRouter = Router();
 
@@ -73,4 +74,53 @@ favoriteRouter.get("/check/:vehicleId", requireAuth, async (request, response) =
 
   const favorited = await isFavorite(userId, parsedId.data);
   response.json({ status: "ok", data: { isFavorite: favorited } });
+});
+
+/**
+ * @swagger
+ * /api/favorites/check-batch:
+ *   get:
+ *     tags: [Favorites]
+ *     summary: Vérifier les favoris pour plusieurs véhicules
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: ids
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: IDs séparés par des virgules (max 50)
+ *     responses:
+ *       200:
+ *         description: Map vehicleId → boolean
+ */
+favoriteRouter.get("/check-batch", requireAuth, async (request, response) => {
+  const userId = extractUserId(request, response);
+  if (!userId) return;
+
+  const idsParam = typeof request.query.ids === "string" ? request.query.ids : "";
+  const vehicleIds = idsParam
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .slice(0, 50); // max 50
+
+  if (vehicleIds.length === 0) {
+    response.json({ status: "ok", data: {} });
+    return;
+  }
+
+  const rows = await prisma.favorite.findMany({
+    where: { userId, vehicleId: { in: vehicleIds } },
+    select: { vehicleId: true },
+  });
+
+  const favoritedIds = new Set(rows.map((r) => r.vehicleId));
+  const result: Record<string, boolean> = {};
+  for (const id of vehicleIds) {
+    result[id] = favoritedIds.has(id);
+  }
+
+  response.json({ status: "ok", data: result });
 });

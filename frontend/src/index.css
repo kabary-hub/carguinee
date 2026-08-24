@@ -31,6 +31,15 @@
   }
 }
 
+/* Hide scrollbar for horizontal tab overflow */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes catalogue-enter {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
@@ -53,4 +62,28 @@
 @media (prefers-reduced-motion: reduce) {
   .catalogue-card, .booking-panel { animation: none; }
   .vehicle-photo { transition: none; }
+}
+
+/* ── Print styles ───────────────────────────────────────────────── */
+@media print {
+  body { background: white !important; }
+  .booking-modal {
+    position: static !important;
+    inset: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+  .booking-modal * {
+    color: black !important;
+    background: transparent !important;
+    border-color: #ccc !important;
+  }
+  .booking-modal img { max-width: 120px !important; height: auto !important; }
 }

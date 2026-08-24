@@ -129,28 +129,50 @@ export async function getAdminStats(
 }
 
 /**
- * Liste de tous les utilisateurs (admin uniquement).
+ * Liste de tous les utilisateurs (admin uniquement) avec pagination et filtre par rôle.
  */
-export async function listAllUsers() {
-  return prisma.user.findMany({
-    select: {
-      id: true,
-      phone: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      role: true,
-      isActive: true,
-      createdAt: true,
-      _count: {
-        select: {
-          vehicles: true,
-          rentalBookings: true,
+export async function listAllUsers(options: { page?: number; pageSize?: number; role?: string } = {}) {
+  const { page = 1, pageSize = 20, role } = options;
+  const skip = (page - 1) * pageSize;
+  const where = role && ["CLIENT", "PROPRIETAIRE", "ADMIN"].includes(role)
+    ? { role: role as "CLIENT" | "PROPRIETAIRE" | "ADMIN" }
+    : {};
+
+  const [items, total] = await prisma.$transaction([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        _count: {
+          select: {
+            vehicles: true,
+            rentalBookings: true,
+          },
         },
       },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
     },
-    orderBy: { createdAt: "desc" },
-  });
+  };
 }
 
 /**
@@ -220,26 +242,44 @@ export async function toggleUserActive(userId: string) {
 }
 
 /**
- * Liste de toutes les réservations (admin) avec filtre optionnel par statut.
+ * Liste de toutes les réservations (admin) avec filtre par statut et pagination.
  */
-export async function listAllBookings(statusFilter?: string) {
+export async function listAllBookings(options: { statusFilter?: string; page?: number; pageSize?: number } = {}) {
+  const { statusFilter, page = 1, pageSize = 20 } = options;
+  const skip = (page - 1) * pageSize;
   const validStatuses = ["EN_ATTENTE", "CONFIRMEE", "EN_COURS", "TERMINEE", "ANNULEE", "REJETEE"];
   const where = statusFilter && validStatuses.includes(statusFilter)
     ? { status: statusFilter as "EN_ATTENTE" | "CONFIRMEE" | "EN_COURS" | "TERMINEE" | "ANNULEE" | "REJETEE" }
     : {};
-  return prisma.rentalBooking.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      vehicle: {
-        include: {
-          photos: { orderBy: { sortOrder: "asc" } },
-          owner: { select: { id: true, firstName: true, lastName: true, phone: true } },
+
+  const [items, total] = await prisma.$transaction([
+    prisma.rentalBooking.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+      include: {
+        vehicle: {
+          include: {
+            photos: { orderBy: { sortOrder: "asc" } },
+            owner: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+          },
+        },
+        customer: {
+          select: { id: true, firstName: true, lastName: true, phone: true, email: true },
         },
       },
-      customer: {
-        select: { id: true, firstName: true, lastName: true, phone: true, email: true },
-      },
+    }),
+    prisma.rentalBooking.count({ where }),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
     },
-  });
+  };
 }

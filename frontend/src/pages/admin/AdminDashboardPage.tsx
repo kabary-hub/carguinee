@@ -5,30 +5,28 @@ import { AppShell } from "../../components/AppShell";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
-import type { ApiResponse, Vehicle, Booking } from "../../lib/domain";
+import type { ApiResponse, Vehicle } from "../../lib/domain";
 
 import { AdminValidationsTab } from "../../components/admin/AdminValidationsTab";
 import { AdminUsersTab } from "../../components/admin/AdminUsersTab";
 import { AdminBookingsTab } from "../../components/admin/AdminBookingsTab";
 import { AdminReportsTab } from "../../components/admin/AdminReportsTab";
-import type { AdminStats, AdminUser, OwnerRequest, PendingAction, ReportItem } from "../../components/admin/adminTypes";
+import type { AdminStats, OwnerRequest, PendingAction, ReportItem } from "../../components/admin/adminTypes";
 
 export function AdminDashboardPage() {
   const { t, i18n } = useTranslation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [lang, setLang] = useState(i18n.language?.startsWith("en") ? "en" : "fr");
 
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [pendingVehicles, setPendingVehicles] = useState<Vehicle[]>([]);
   const [requests, setRequests] = useState<OwnerRequest[]>([]);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [reports, setReports] = useState<ReportItem[]>([]);
-  const [bookingFilter, setBookingFilter] = useState("");
   const [activeTab, setActiveTab] = useState<"stats" | "users" | "bookings" | "reports">(
     (searchParams.get("tab") as "stats" | "users" | "bookings" | "reports") || "stats"
   );
   const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState(searchParams.get("status") || "");
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [error, setError] = useState("");
   const { showToast } = useToast();
@@ -39,48 +37,27 @@ export function AdminDashboardPage() {
     return () => { i18n.off("languageChanged", handler); };
   }, [i18n]);
 
-  const BOOKING_STATUS_LABELS: Record<string, string> = useMemo(() => ({
-    EN_ATTENTE: t("bookings.status.pending"),
-    CONFIRMEE: t("bookings.status.confirmed"),
-    EN_COURS: t("bookings.status.inProgress"),
-    TERMINEE: t("bookings.status.completed"),
-    ANNULEE: t("bookings.status.cancelled"),
-    REJETEE: t("bookings.status.rejected"),
-  }), [t]);
-
   const getDescription = useCallback((v: Vehicle) => {
     if (lang === "en" && v.descriptionEn) return v.descriptionEn;
     if (lang === "fr" && v.descriptionFr) return v.descriptionFr;
     return v.descriptionFr || v.descriptionEn || v.description || t("admin.dashboard.noVehiclesToValidate");
   }, [lang, t]);
 
+  /** Charge les stats + données de validation (pas les users/bookings, gérés par les onglets) */
   const load = () =>
     Promise.all([
       apiFetch<ApiResponse<AdminStats>>("/api/admin/stats"),
       apiFetch<ApiResponse<Vehicle[]>>("/api/vehicles/admin/pending"),
       apiFetch<ApiResponse<OwnerRequest[]>>("/api/owner-requests/admin/pending"),
-      apiFetch<ApiResponse<AdminUser[]>>("/api/admin/users"),
-      apiFetch<ApiResponse<Booking[]>>(
-        `/api/admin/bookings${bookingFilter ? `?status=${bookingFilter}` : ""}`,
-      ),
     ])
-      .then(([statsData, vehicleData, requestData, usersData, bookingsData]) => {
+      .then(([statsData, vehicleData, requestData]) => {
         setStats(statsData.data);
         setPendingVehicles(vehicleData.data);
         setRequests(requestData.data);
-        setUsers(usersData.data);
-        setAllBookings(bookingsData.data);
       })
       .catch((reason: Error) => setError(reason.message));
 
   useEffect(() => { void load(); }, []);
-
-  useEffect(() => {
-    const url = bookingFilter ? `/api/admin/bookings?status=${bookingFilter}` : "/api/admin/bookings";
-    apiFetch<ApiResponse<Booking[]>>(url)
-      .then((data) => setAllBookings(data.data))
-      .catch(() => {});
-  }, [bookingFilter]);
 
   useEffect(() => {
     apiFetch<ApiResponse<{ items: ReportItem[] }>>("/api/admin/reports")
@@ -180,7 +157,7 @@ export function AdminDashboardPage() {
     <AppShell>
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <p className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">{t("admin.dashboard.tabs.validations")}</p>
-        <h1 className="mt-2 text-3xl font-black">{t("admin.dashboard.title")}</h1>
+        <h1 className="mt-2 text-2xl font-black sm:text-3xl">{t("admin.dashboard.title")}</h1>
         <p className="mt-2 text-slate-600 dark:text-slate-400">{t("admin.dashboard.subtitle")}</p>
 
         {error && (
@@ -210,40 +187,49 @@ export function AdminDashboardPage() {
         )}
 
         {/* ── Onglets ─────────────────────────────────────────────────── */}
-        <div className="mt-8 flex items-center gap-1 overflow-x-auto border-b border-slate-200 pb-px sm:gap-2 dark:border-slate-800">
-          {([
-            { key: "stats", label: t("admin.dashboard.tabs.validations") },
-            { key: "users", label: t("admin.dashboard.tabs.users") },
-            { key: "bookings", label: t("admin.dashboard.tabs.bookings") },
-            { key: "reports", label: t("admin.dashboard.tabs.reports") },
-          ] as const).map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`whitespace-nowrap border-b-2 px-3 py-3 text-xs font-bold transition sm:px-4 sm:text-sm ${
-                activeTab === tab.key
-                  ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
-                  : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400"
-              }`}
-            >
-              {tab.label}
-              {tab.key === "stats" && pendingVehicles.length + requests.length > 0 && (
-                <span className="ml-2 rounded-full bg-rose-600 px-2 py-0.5 text-xs text-white">
-                  {pendingVehicles.length + requests.length}
-                </span>
-              )}
-              {tab.key === "reports" && stats?.pendingReports && stats.pendingReports > 0 && (
-                <span className="ml-2 rounded-full bg-amber-600 px-2 py-0.5 text-xs text-white">
-                  {stats.pendingReports}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Mobile : Conversations en haut, onglets en bas */}
+        <div className="mt-6 flex flex-col gap-2 border-b border-slate-200 pb-px sm:mt-8 sm:flex-row sm:items-center sm:gap-1 dark:border-slate-800">
           <Link
             to="/administration/chats"
-            className="ml-auto whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="flex items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 sm:hidden dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
           >
-            💬 <span className="hidden sm:inline">Conversations</span>
+            💬 Conversations
+          </Link>
+          <div className="flex items-center gap-0.5 sm:gap-1">
+            {([
+              { key: "stats", label: t("admin.dashboard.tabs.validations") },
+              { key: "users", label: t("admin.dashboard.tabs.users") },
+              { key: "bookings", label: t("admin.dashboard.tabs.bookings") },
+              { key: "reports", label: t("admin.dashboard.tabs.reports") },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`whitespace-nowrap border-b-2 px-1.5 py-2 text-[11px] font-bold transition sm:px-3 sm:py-3 sm:text-sm ${
+                  activeTab === tab.key
+                    ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                }`}
+              >
+                {tab.label}
+                {tab.key === "stats" && pendingVehicles.length + requests.length > 0 && (
+                  <span className="ml-1 rounded-full bg-rose-600 px-1 py-0.5 text-[9px] text-white sm:ml-1.5 sm:px-1.5 sm:text-[10px]">
+                    {pendingVehicles.length + requests.length}
+                  </span>
+                )}
+                {tab.key === "reports" && stats?.pendingReports && stats.pendingReports > 0 && (
+                  <span className="ml-1 rounded-full bg-amber-600 px-1 py-0.5 text-[9px] text-white sm:ml-1.5 sm:px-1.5 sm:text-[10px]">
+                    {stats.pendingReports}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <Link
+            to="/administration/chats"
+            className="ml-auto hidden items-center gap-1 whitespace-nowrap rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 sm:flex dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            💬 Conversations
           </Link>
         </div>
 
@@ -256,35 +242,28 @@ export function AdminDashboardPage() {
             getDescription={getDescription}
             setPendingAction={setPendingAction}
             setActiveTab={setActiveTab}
-            setBookingFilter={setBookingFilter}
+            setRoleFilter={setRoleFilter}
+            setBookingStatusFilter={setBookingStatusFilter}
           />
         )}
 
         {activeTab === "users" && (
           <AdminUsersTab
-            users={users}
-            roleFilter={roleFilter}
-            setRoleFilter={setRoleFilter}
+            initialRoleFilter={roleFilter}
             toggleUserRole={toggleUserRole}
             toggleUserActive={toggleUserActive}
+            onReload={load}
           />
         )}
 
         {activeTab === "bookings" && (
-          <AdminBookingsTab
-            allBookings={allBookings}
-            bookingFilter={bookingFilter}
-            setBookingFilter={setBookingFilter}
-            BOOKING_STATUS_LABELS={BOOKING_STATUS_LABELS}
-          />
+          <AdminBookingsTab initialStatusFilter={bookingStatusFilter} />
+        )}
+
+        {activeTab === "reports" && (
+          <AdminReportsTab reports={reports} setReports={setReports} showToast={showToast} />
         )}
       </main>
-
-      {activeTab === "reports" && (
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-          <AdminReportsTab reports={reports} setReports={setReports} showToast={showToast} />
-        </main>
-      )}
 
       {pendingAction && (
         <ConfirmDialog

@@ -208,9 +208,11 @@ export async function getMessages(
  * Compte les messages non lus pour un utilisateur
  */
 export async function getUnreadMessageCount(userId: string): Promise<number> {
-  return prisma.message.count({
+  const rows = await prisma.message.groupBy({
+    by: ["conversationId"],
     where: { receiverId: userId, isRead: false },
   });
+  return rows.length;
 }
 
 // ── Modifier un message ─────────────────────────────────────────────────────

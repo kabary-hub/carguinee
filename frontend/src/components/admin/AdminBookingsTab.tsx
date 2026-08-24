@@ -1,22 +1,72 @@
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useToast } from "../../contexts/ToastContext";
+import { apiFetch } from "../../lib/api";
 import { StatusBadge } from "../StatusBadge";
+import { BookingDetailsModal } from "../client/BookingDetailsModal";
+import { ConfirmDialog } from "../ConfirmDialog";
+import { printBookingList } from "../../lib/printUtils";
 import type { Booking } from "../../lib/domain";
 import { formatDate, formatGnf } from "../../lib/domain";
 
+type BookingResult = {
+  items: Booking[];
+  pagination: { page: number; pageSize: number; total: number; totalPages: number };
+};
+
 type Props = {
-  allBookings: Booking[];
-  bookingFilter: string;
-  setBookingFilter: (filter: string) => void;
-  BOOKING_STATUS_LABELS: Record<string, string>;
+  /** Filtre statut externe (optionnel, depuis les cartes du dashboard) */
+  initialStatusFilter?: string;
 };
 
 const BOOKING_FILTERS = ["", "EN_ATTENTE", "CONFIRMEE", "EN_COURS", "TERMINEE", "ANNULEE", "REJETEE"];
+const PAGE_SIZE = 20;
 
-export function AdminBookingsTab({ allBookings, bookingFilter, setBookingFilter, BOOKING_STATUS_LABELS }: Props) {
+export function AdminBookingsTab({ initialStatusFilter = "" }: Props) {
   const { t } = useTranslation();
+  const { showToast } = useToast();
+
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<BookingResult["pagination"] | null>(null);
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+
+const BOOKING_I18N: Record<string, string> = {
+  EN_ATTENTE: "bookings.status.pending",
+  CONFIRMEE: "bookings.status.confirmed",
+  EN_COURS: "bookings.status.inProgress",
+  TERMINEE: "bookings.status.completed",
+  ANNULEE: "bookings.status.cancelled",
+  REJETEE: "bookings.status.rejected",
+};
+
+  const loadBookings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+      if (statusFilter) params.set("status", statusFilter);
+      const res = await apiFetch<{ status: string; data: BookingResult }>(`/api/admin/bookings?${params}`);
+      setBookings(res.data.items);
+      setPagination(res.data.pagination);
+    } catch {
+      showToast(t("admin.bookings.loadError"), "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, statusFilter, showToast]);
+
+  useEffect(() => { void loadBookings(); }, [loadBookings]);
+
+  // Quand on change le filtre statut, revenir à la page 1
+  useEffect(() => { setPage(1); }, [statusFilter]);
 
   return (
+    <>
     <section className="mt-6">
+      {/* Filtres statut */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
           {t("admin.bookings.filterByStatus")}
@@ -24,87 +74,171 @@ export function AdminBookingsTab({ allBookings, bookingFilter, setBookingFilter,
         {BOOKING_FILTERS.map((f) => (
           <button
             key={f}
-            onClick={() => setBookingFilter(f)}
+            onClick={() => setStatusFilter(f)}
             className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-              bookingFilter === f
+              statusFilter === f
                 ? "bg-emerald-600 text-white"
                 : "border border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
             }`}
           >
-            {f ? BOOKING_STATUS_LABELS[f] ?? f : t("admin.bookings.all")}
+            {f ? (BOOKING_I18N[f] ? t(BOOKING_I18N[f]) : f) : t("admin.bookings.all")}
           </button>
         ))}
+        <button
+          onClick={() => {
+            const label = statusFilter ? (BOOKING_I18N[statusFilter] ? t(BOOKING_I18N[statusFilter]) : statusFilter) : t("admin.bookings.all");
+            printBookingList(bookings, label);
+          }}
+          disabled={bookings.length === 0}
+          className="ml-auto rounded-lg border border-slate-300 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+        >
+          🖨️ {t("admin.printList")}
+        </button>
+        <button
+          onClick={() => setShowDeleteAllConfirm(true)}
+          disabled={bookings.length === 0}
+          className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-40 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-500/15"
+        >
+          🗑️ {t("admin.deleteAll")}
+        </button>
       </div>
 
-      {/* Vue cartes sur mobile */}
-      <div className="mt-4 grid gap-3 sm:hidden">
-        {allBookings.map((b) => (
-          <div key={b.id} onClick={() => window.open(`/vehicules/${b.vehicle.id}`, "_blank")} className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-bold">{b.vehicle.brand} {b.vehicle.model}</p>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {b.customer?.firstName} {b.customer?.lastName}
-                </p>
+      {loading && (
+        <p className="mt-10 text-center text-sm text-slate-500 dark:text-slate-400">
+          {t("common.loading")}
+        </p>
+      )}
+
+      {!loading && bookings.length === 0 && (
+        <p className="mt-10 text-center text-slate-500 dark:text-slate-400">
+          {t("admin.bookings.noBookingsFound")}
+        </p>
+      )}
+
+      {/* ── Vue cartes sur mobile ─────────────────────────────────────── */}
+      {!loading && bookings.length > 0 && (
+        <div className="mt-4 grid gap-3 sm:hidden">
+          {bookings.map((b) => (
+            <div key={b.id} onClick={() => setSelectedBooking(b)} className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-bold">{b.vehicle.brand} {b.vehicle.model}</p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {b.customer?.firstName} {b.customer?.lastName}
+                  </p>
+                </div>
+                <StatusBadge value={b.status} />
               </div>
-              <StatusBadge value={b.status} />
+              <div className="mt-2 flex items-center justify-between text-sm">
+                <span className="text-slate-500 dark:text-slate-400">
+                  {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                </span>
+                <span className="font-bold">{formatGnf(b.totalAmountGnf)}</span>
+              </div>
             </div>
-            <div className="mt-2 flex items-center justify-between text-sm">
-              <span className="text-slate-500 dark:text-slate-400">
-                {formatDate(b.startDate)} → {formatDate(b.endDate)}
-              </span>
-              <span className="font-bold">{formatGnf(b.totalAmountGnf)}</span>
-            </div>
-          </div>
-        ))}
-        {allBookings.length === 0 && (
-          <p className="rounded-xl bg-slate-100 p-5 text-center text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-            {t("admin.bookings.noBookingsFound")}
-          </p>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Vue table sur desktop */}
-      <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm sm:block dark:border-slate-800 dark:bg-slate-900">
-        <table className="w-full min-w-[750px] text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-3 font-semibold">{t("admin.bookings.colVehicle")}</th>
-              <th className="px-4 py-3 font-semibold">{t("admin.bookings.colClient")}</th>
-              <th className="px-4 py-3 font-semibold">{t("admin.bookings.colOwner")}</th>
-              <th className="px-4 py-3 font-semibold">{t("admin.bookings.colPeriod")}</th>
-              <th className="px-4 py-3 font-semibold">{t("admin.bookings.colAmount")}</th>
-              <th className="px-4 py-3 font-semibold">{t("admin.bookings.colStatus")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allBookings.map((b) => (
-              <tr
-                key={b.id}
-                className="cursor-pointer border-b border-slate-100 last:border-0 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
-                onClick={() => window.open(`/vehicules/${b.vehicle.id}`, "_blank")}
-              >
-                <td className="px-4 py-3 font-bold">{b.vehicle.brand} {b.vehicle.model}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{b.customer?.firstName} {b.customer?.lastName}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{b.vehicle.owner?.firstName} {b.vehicle.owner?.lastName}</td>
-                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{formatDate(b.startDate)} → {formatDate(b.endDate)}</td>
-                <td className="px-4 py-3 font-semibold">{formatGnf(b.totalAmountGnf)}</td>
-                <td className="px-4 py-3"><StatusBadge value={b.status} /></td>
-              </tr>
-            ))}
-            {allBookings.length === 0 && (
+      {/* ── Vue table sur desktop ─────────────────────────────────────── */}
+      {!loading && bookings.length > 0 && (
+        <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm sm:block dark:border-slate-800 dark:bg-slate-900">
+          <table className="w-full min-w-[750px] text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                  {t("admin.bookings.noBookingsFound")}
-                </td>
+                <th className="px-4 py-3 font-semibold">{t("admin.bookings.colVehicle")}</th>
+                <th className="px-4 py-3 font-semibold">{t("admin.bookings.colClient")}</th>
+                <th className="px-4 py-3 font-semibold">{t("admin.bookings.colOwner")}</th>
+                <th className="px-4 py-3 font-semibold">{t("admin.bookings.colPeriod")}</th>
+                <th className="px-4 py-3 font-semibold">{t("admin.bookings.colAmount")}</th>
+                <th className="px-4 py-3 font-semibold">{t("admin.bookings.colStatus")}</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-        {t("admin.bookings.bookingCount", { count: allBookings.length })}
-      </p>
+            </thead>
+            <tbody>
+              {bookings.map((b) => (
+                <tr
+                  key={b.id}
+                  className="cursor-pointer border-b border-slate-100 last:border-0 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50"
+                  onClick={() => setSelectedBooking(b)}
+                >
+                  <td className="px-4 py-3 font-bold">{b.vehicle.brand} {b.vehicle.model}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{b.customer?.firstName} {b.customer?.lastName}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{b.vehicle.owner?.firstName} {b.vehicle.owner?.lastName}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{formatDate(b.startDate)} → {formatDate(b.endDate)}</td>
+                  <td className="px-4 py-3 font-semibold">{formatGnf(b.totalAmountGnf)}</td>
+                  <td className="px-4 py-3"><StatusBadge value={b.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Pagination ──────────────────────────────────────────────── */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {t("admin.bookings.paginationInfo", { total: pagination.total, page: pagination.page, totalPages: pagination.totalPages })}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
+            >
+              {t("common.previous")}
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={page >= pagination.totalPages}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
+            >
+              {t("common.next")} →
+            </button>
+          </div>
+        </div>
+      )}
+      {pagination && pagination.totalPages <= 1 && (
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            {t("admin.bookings.paginationInfo", { total: pagination.total, page: pagination.page, totalPages: pagination.totalPages })}
+          </p>
+      )}
     </section>
+
+      {selectedBooking && (
+        <BookingDetailsModal
+          booking={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+        />
+      )}
+
+      {showDeleteAllConfirm && (
+        <ConfirmDialog
+          open
+          title={t("admin.deleteAllBookingsTitle")}
+          message={t("admin.deleteAllBookingsMessage", { count: pagination?.total ?? bookings.length })}
+          confirmLabel={t("admin.confirmDeleteAll")}
+          tone="rose"
+          requireReason
+          onConfirm={async (reason) => {
+            try {
+              const statusParam = statusFilter ? `?status=${statusFilter}` : "";
+              await apiFetch(`/api/admin/bookings${statusParam}`, {
+                method: "DELETE",
+                body: JSON.stringify({ reason }),
+              });
+              showToast(t("admin.bookingsDeleted"), "success");
+              setShowDeleteAllConfirm(false);
+              // Recharger la page 1
+              setPage(1);
+              setStatusFilter("");
+            } catch {
+              showToast(t("admin.deleteError"), "error");
+            }
+          }}
+          onCancel={() => setShowDeleteAllConfirm(false)}
+        />
+      )}
+    </>
   );
 }

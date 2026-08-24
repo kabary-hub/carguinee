@@ -205,7 +205,12 @@ export function VehicleDetailPage() {
 
   return (
     <AppShell>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:py-10">
+      <main className={`mx-auto max-w-6xl px-4 py-6 sm:py-10 ${vehicle.adminFavorited ? "rounded-3xl border-2 border-emerald-400 bg-emerald-50/30 dark:border-emerald-600 dark:bg-emerald-500/5" : ""}`}>
+        {vehicle.adminFavorited && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-100 to-green-100 px-4 py-2.5 text-sm font-bold text-emerald-800 shadow-sm dark:from-emerald-500/15 dark:to-green-500/15 dark:text-emerald-300">
+            ⭐ {t("vehicles.adminFavorite")}
+          </div>
+        )}
         <Link to="/vehicules" className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
           ← {t("vehicles.publicCatalog")}
         </Link>

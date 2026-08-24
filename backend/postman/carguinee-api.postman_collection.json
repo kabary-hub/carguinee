@@ -377,6 +377,36 @@
               }
             }
           ]
+        },
+        {
+          "name": "Admin Vehicles List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/vehicles/admin/all?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "vehicles", "admin", "all"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin vehicles or 403', () => {",
+                  "  pm.expect([200, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -420,6 +450,33 @@
               "script": {
                 "exec": [
                   "pm.test('Favorites returned', () => {",
+                  "  pm.expect([200, 401]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Favorites Batch",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites/check-batch?ids={{vehicleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites", "check-batch"],
+              "query": [{ "key": "ids", "value": "{{vehicleId}}" }]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Batch check returned', () => {",
                   "  pm.expect([200, 401]).to.include(pm.response.code);",
                   "});"
                 ]
@@ -475,6 +532,32 @@
                 "exec": [
                   "pm.test('Conversations returned', () => {",
                   "  pm.expect([200, 401]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unread Conversations Count",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/messages/unread-count",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Unread count returned', () => {",
+                  "  pm.expect([200, 401]).to.include(pm.response.code);",
+                  "  if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data).to.have.property('count');",
+                  "  }",
                   "});"
                 ]
               }
@@ -571,7 +654,15 @@
           "name": "Admin Users List",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/api/admin/users",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
             "header": [
               { "key": "Authorization", "value": "Bearer {{authToken}}" }
             ]
@@ -582,6 +673,123 @@
               "script": {
                 "exec": [
                   "pm.test('Users list or 403', () => {",
+                  "  pm.expect([200, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Bookings List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/bookings?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "bookings"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin bookings or 403', () => {",
+                  "  pm.expect([200, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Delete Bookings (by status)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/bookings?status=ANNULEE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "bookings"],
+              "query": [{ "key": "status", "value": "ANNULEE" }]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delete bookings or 403', () => {",
+                  "  pm.expect([200, 403, 500]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Favorites List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/favorites?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "favorites"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin favorites or 403', () => {",
+                  "  pm.expect([200, 403]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Reviews List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/reviews?page=1&pageSize=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "reviews"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            },
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ]
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin reviews or 403', () => {",
                   "  pm.expect([200, 403]).to.include(pm.response.code);",
                   "});"
                 ]

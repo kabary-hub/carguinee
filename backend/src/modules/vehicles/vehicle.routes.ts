@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import { optionalAuth, requireAuth, requireRoles } from "../auth/auth.middleware.js";
-import { createVehicleSchema, updateVehicleSchema, vehicleListQuerySchema } from "./vehicle.schemas.js";
+import { createVehicleSchema, updateVehicleSchema, vehicleListQuerySchema, vehicleAdminListQuerySchema } from "./vehicle.schemas.js";
 import {
   archiveVehicle,
   createVehicle,
   getVehicleById,
   listOwnerVehicles,
   listPublicVehicles,
+  listAdminVehicles,
   restoreVehicle,
   updateVehicle,
   approveVehicle,
@@ -103,6 +104,52 @@ vehicleRouter.get(
   async (_request, response) => {
     const vehicles = await listPendingVehicleValidations();
     response.json({ status: "ok", data: vehicles });
+  },
+);
+
+/**
+ * @swagger
+ * /api/vehicles/admin/all:
+ *   get:
+ *     tags: [Vehicles]
+ *     summary: Liste admin des véhicules (filtrable par publicationStatus)
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *       - in: query
+ *         name: publicationStatus
+ *         schema:
+ *           type: string
+ *           enum: [BROUILLON, EN_ATTENTE_VALIDATION, PUBLIEE, REJETEE, ARCHIVEE]
+ *     responses:
+ *       200:
+ *         description: Liste paginée des véhicules
+ *       403:
+ *         description: Accès admin requis
+ */
+vehicleRouter.get(
+  "/admin/all",
+  requireAuth,
+  requireRoles("ADMIN"),
+  async (request, response) => {
+    const parsed = vehicleAdminListQuerySchema.safeParse(request.query);
+    if (!parsed.success) {
+      response.status(400).json({ status: "error", message: "Paramètres invalides.", details: parsed.error.flatten() });
+      return;
+    }
+    const { publicationStatus, page, pageSize } = parsed.data;
+    const result = await listAdminVehicles({ publicationStatus, page, pageSize });
+    response.json({ status: "ok", data: result });
   },
 );
 

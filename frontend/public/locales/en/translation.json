@@ -17,6 +17,7 @@
     "reject": "Reject",
     "backToHome": "← Back to home",
     "backToMySpace": "← Back to my space",
+    "previous": "← Previous",
     "perDay": "/ day",
     "perDayWithCondition": "/ day · {{condition}} · {{year}}",
     "unknownYear": "unknown year",
@@ -224,6 +225,7 @@
       "odometerGuaranteedYes": "✅ Yes",
       "odometerGuaranteedNo": "❌ No"
     },
+    "adminFavorite": "Recommended",
     "status": {
       "draft": "Draft",
       "pendingValidation": "Pending validation",
@@ -316,6 +318,7 @@
       "recentBookings": "Recent Bookings",
       "receivedBookings": "Received Bookings",
       "viewAllBookings": "View all bookings →",
+      "allBookings": "All bookings",
       "bookingsCount": "{{count}} booking request(s) total. Visit the Bookings page for more details.",
       "confirmed": "confirmed",
       "noVehicles": "Create your first vehicle to get started.",
@@ -383,6 +386,12 @@
       "carteGrisePresent": "Registration card present?",
       "visiteTechniqueValidUntil": "Technical inspection valid until",
       "assuranceValidUntil": "Insurance valid until"
+    },
+    "addVehicle": {
+      "unsavedTitle": "Unsaved data",
+      "unsavedMessage": "You started filling in the form. If you leave now, the data you entered will be lost.",
+      "continueFilling": "Continue filling in",
+      "quitAnyway": "Leave anyway"
     }
   },
   "admin": {
@@ -430,8 +439,43 @@
       "ownerRequestApproved": "Owner request approved.",
       "ownerRequestRejected": "Owner request rejected.",
       "actionImpossible": "Action impossible.",
+      "addFavorite": "Add to favorites",
+      "removeFavorite": "Remove from favorites",
+      "favoriteAdded": "Added to admin favorites.",
+      "favoriteRemoved": "Removed from admin favorites.",
       "reportsTitle": "Reports ({{count}})",
       "noReports": "No reports yet."
+    },
+    "reports": {
+      "detailsTitle": "Report details",
+      "colReason": "Reason",
+      "colTargetType": "Target type",
+      "colTargetId": "Target ID",
+      "colDate": "Date",
+      "description": "Description",
+      "colReporter": "Reported by",
+      "resolve": "Resolve",
+      "dismiss": "Dismiss",
+      "banUser": "Ban user",
+      "suspendVehicle": "Suspend vehicle",
+      "viewVehicle": "View vehicle",
+      "viewProfile": "View profile",
+      "copyUserId": "Copy user ID",
+      "idCopied": "User ID copied to clipboard",
+      "targetVehicle": "Vehicle",
+      "targetUser": "User",
+      "targetBooking": "Booking",
+      "resolved": "Report resolved.",
+      "dismissed": "Report dismissed.",
+      "userBanned": "User banned.",
+      "vehicleSuspended": "Vehicle suspended.",
+      "resolveError": "Error resolving report.",
+      "dismissError": "Error dismissing report.",
+      "actionError": "An error occurred.",
+      "banUserTitle": "Ban this user?",
+      "banUserMessage": "Their account will be deactivated and they won't be able to log in.",
+      "suspendVehicleTitle": "Suspend this vehicle?",
+      "suspendVehicleMessage": "Its listing will be archived and it will no longer be visible on the app."
     },
     "users": {
       "title": "User Management",
@@ -461,14 +505,24 @@
       "filterByStatus": "Filter by status:",
       "all": "All",
       "noBookingsFound": "No bookings found.",
+      "loadError": "Error loading bookings.",
       "bookingCount": "{{count}} booking(s) displayed.",
+      "paginationInfo": "{{total}} booking(s) — Page {{page}}/{{totalPages}}",
       "colVehicle": "Vehicle",
       "colClient": "Client",
       "colOwner": "Owner",
       "colPeriod": "Period",
       "colAmount": "Amount",
       "colStatus": "Status"
-    }
+    },
+    "printList": "Print list",
+    "printCard": "Print card",
+    "deleteAll": "Delete all",
+    "deleteAllBookingsTitle": "Delete bookings",
+    "deleteAllBookingsMessage": "Are you sure you want to delete {{count}} booking(s)? This action is irreversible.",
+    "confirmDeleteAll": "Delete",
+    "bookingsDeleted": "Bookings deleted.",
+    "deleteError": "Error during deletion."
   },
   "profile": {
     "title": "My Profile",

@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ConfirmDialog } from "../ConfirmDialog";
 import { apiFetch } from "../../lib/api";
 import type { ReportItem } from "./adminTypes";
+import { ReportDetailsModal } from "./ReportDetailsModal";
 
 type Props = {
   reports: ReportItem[];
@@ -8,15 +11,44 @@ type Props = {
   showToast: (msg: string, type?: string) => void;
 };
 
+/** Action de suppression en attente de confirmation */
+type PendingConfirm = {
+  type: "ban-user" | "suspend-vehicle";
+  reportId: string;
+};
+
 export function AdminReportsTab({ reports, setReports, showToast }: Props) {
   const { t } = useTranslation();
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
+
+  /** Exécute l'action après confirmation */
+  const executeAction = async () => {
+    if (!pendingConfirm) return;
+    const { type, reportId } = pendingConfirm;
+    setPendingConfirm(null);
+
+    try {
+      if (type === "ban-user") {
+        await apiFetch(`/api/admin/reports/${reportId}/ban-user`, { method: "PATCH" });
+        setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "RESOLVED" } : r));
+        showToast(t("admin.reports.userBanned"), "success");
+      } else if (type === "suspend-vehicle") {
+        await apiFetch(`/api/admin/reports/${reportId}/suspend-vehicle`, { method: "PATCH" });
+        setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "RESOLVED" } : r));
+        showToast(t("admin.reports.vehicleSuspended"), "success");
+      }
+    } catch {
+      showToast(t("admin.reports.actionError"), "error");
+    }
+  };
 
   return (
     <section className="mt-6">
       <h2 className="text-lg font-black">📋 {t("admin.dashboard.reportsTitle", { count: reports.length })}</h2>
       <div className="mt-4 space-y-3">
         {reports.map((report) => (
-          <article key={report.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <article key={report.id} onClick={() => setSelectedReport(report)} className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{report.reason}</p>
@@ -36,71 +68,53 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
             {report.status === "PENDING" && (
               <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                 <button
-                  onClick={async () => {
+                  onClick={(e) => { e.stopPropagation(); void (async () => {
                     try {
                       await apiFetch(`/api/admin/reports/${report.id}/resolve`, {
                         method: "PATCH",
                         body: JSON.stringify({ status: "RESOLVED" }),
                       });
                       setReports((prev) => prev.map((r) => r.id === report.id ? { ...r, status: "RESOLVED" } : r));
-                      showToast("Signalement résolu.", "success");
+                      showToast(t("admin.reports.resolved"), "success");
                     } catch {
-                      showToast("Erreur lors de la résolution.", "error");
+                      showToast(t("admin.reports.resolveError"), "error");
                     }
-                  }}
+                  })(); }}
                   className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
                 >
-                  ✅ Résoudre
+                  ✅ {t("admin.reports.resolve")}
                 </button>
                 <button
-                  onClick={async () => {
+                  onClick={(e) => { e.stopPropagation(); void (async () => {
                     try {
                       await apiFetch(`/api/admin/reports/${report.id}/resolve`, {
                         method: "PATCH",
                         body: JSON.stringify({ status: "DISMISSED" }),
                       });
                       setReports((prev) => prev.map((r) => r.id === report.id ? { ...r, status: "DISMISSED" } : r));
-                      showToast("Signalement rejeté.", "success");
+                      showToast(t("admin.reports.dismissed"), "success");
                     } catch {
-                      showToast("Erreur lors du rejet.", "error");
+                      showToast(t("admin.reports.dismissError"), "error");
                     }
-                  }}
+                  })(); }}
                   className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
-                  ❌ Rejeter
+                  ❌ {t("admin.reports.dismiss")}
                 </button>
                 {report.targetType === "USER" && (
                   <button
-                    onClick={async () => {
-                      if (!window.confirm("Bannir cet utilisateur ? Son compte sera désactivé.")) return;
-                      try {
-                        await apiFetch(`/api/admin/reports/${report.id}/ban-user`, { method: "PATCH" });
-                        setReports((prev) => prev.map((r) => r.id === report.id ? { ...r, status: "RESOLVED" } : r));
-                        showToast("Utilisateur banni.", "success");
-                      } catch {
-                        showToast("Erreur lors du bannissement.", "error");
-                      }
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setPendingConfirm({ type: "ban-user", reportId: report.id }); }}
                     className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700"
                   >
-                    🚫 Bannir l'utilisateur
+                    🚫 {t("admin.reports.banUser")}
                   </button>
                 )}
                 {report.targetType === "VEHICLE" && (
                   <button
-                    onClick={async () => {
-                      if (!window.confirm("Suspendre ce véhicule ? Sa publication sera archivée.")) return;
-                      try {
-                        await apiFetch(`/api/admin/reports/${report.id}/suspend-vehicle`, { method: "PATCH" });
-                        setReports((prev) => prev.map((r) => r.id === report.id ? { ...r, status: "RESOLVED" } : r));
-                        showToast("Véhicule suspendu.", "success");
-                      } catch {
-                        showToast("Erreur lors de la suspension.", "error");
-                      }
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setPendingConfirm({ type: "suspend-vehicle", reportId: report.id }); }}
                     className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-700"
                   >
-                    ⛔ Suspendre le véhicule
+                    ⛔ {t("admin.reports.suspendVehicle")}
                   </button>
                 )}
               </div>
@@ -113,6 +127,66 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
           </p>
         )}
       </div>
+
+      {/* Modale détails du signalement */}
+      {selectedReport && (
+        <ReportDetailsModal
+          report={selectedReport}
+          onClose={() => setSelectedReport(null)}
+          onResolve={async (reportId) => {
+            try {
+              await apiFetch(`/api/admin/reports/${reportId}/resolve`, {
+                method: "PATCH",
+                body: JSON.stringify({ status: "RESOLVED" }),
+              });
+              setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "RESOLVED" } : r));
+              showToast(t("admin.reports.resolved"), "success");
+            } catch {
+              showToast(t("admin.reports.resolveError"), "error");
+            }
+          }}
+          onDismiss={async (reportId) => {
+            try {
+              await apiFetch(`/api/admin/reports/${reportId}/resolve`, {
+                method: "PATCH",
+                body: JSON.stringify({ status: "DISMISSED" }),
+              });
+              setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "DISMISSED" } : r));
+              showToast(t("admin.reports.dismissed"), "success");
+            } catch {
+              showToast(t("admin.reports.dismissError"), "error");
+            }
+          }}
+          onBanUser={(reportId) => setPendingConfirm({ type: "ban-user", reportId })}
+          onSuspendVehicle={(reportId) => setPendingConfirm({ type: "suspend-vehicle", reportId })}
+        />
+      )}
+
+      {/* Modales de confirmation */}
+      {pendingConfirm?.type === "ban-user" && (
+        <ConfirmDialog
+          open
+          title={t("admin.reports.banUserTitle")}
+          message={t("admin.reports.banUserMessage")}
+          confirmLabel={t("admin.reports.banUser")}
+          tone="rose"
+          requireReason
+          onConfirm={executeAction}
+          onCancel={() => setPendingConfirm(null)}
+        />
+      )}
+      {pendingConfirm?.type === "suspend-vehicle" && (
+        <ConfirmDialog
+          open
+          title={t("admin.reports.suspendVehicleTitle")}
+          message={t("admin.reports.suspendVehicleMessage")}
+          confirmLabel={t("admin.reports.suspendVehicle")}
+          tone="rose"
+          requireReason
+          onConfirm={executeAction}
+          onCancel={() => setPendingConfirm(null)}
+        />
+      )}
     </section>
   );
 }
