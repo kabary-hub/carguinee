@@ -101,6 +101,63 @@ function formatMonth(m: string) {
   return `${months[parseInt(month, 10) - 1]} ${year.slice(2)}`;
 }
 
+// ── Export CSV ──────────────────────────────────────────────────────────────
+
+function exportCSV(stats: Stats) {
+  const lines: string[] = [];
+  const isOwner = stats.role === "PROPRIETAIRE";
+
+  if (isOwner) {
+    const s = stats.summary;
+    lines.push("Propriétaire - Statistiques");
+    lines.push("");
+    lines.push("Métrique,Valeur");
+    lines.push(`Véhicules publiés,${s.publishedVehicles}`);
+    lines.push(`Véhicules total,${s.totalVehicles}`);
+    lines.push(`Réservations,${s.totalBookings}`);
+    lines.push(`Réservations confirmées,${s.confirmedBookings}`);
+    lines.push(`Revenu total,${s.totalRevenue}`);
+    lines.push(`Taux d'occupation,${s.occupancyRate}%`);
+    lines.push("");
+    lines.push("Statut,Nombre");
+    for (const [status, count] of Object.entries(stats.bookingsByStatus)) {
+      lines.push(`${STATUS_LABELS[status] || status},${count}`);
+    }
+    lines.push("");
+    lines.push("Mois,Réservations,Revenu");
+    for (const m of stats.monthlyData) {
+      lines.push(`${m.month},${m.count},${(m as { revenue: number }).revenue}`);
+    }
+  } else {
+    const s = stats.summary;
+    lines.push("Client - Statistiques");
+    lines.push("");
+    lines.push("Métrique,Valeur");
+    lines.push(`Réservations,${s.totalBookings}`);
+    lines.push(`Dépensé,${s.totalSpent}`);
+    lines.push(`Favoris,${s.favoriteCount}`);
+    lines.push(`Points fidélité,${s.loyaltyPoints}`);
+    lines.push("");
+    lines.push("Statut,Nombre");
+    for (const [status, count] of Object.entries(stats.bookingsByStatus)) {
+      lines.push(`${STATUS_LABELS[status] || status},${count}`);
+    }
+    lines.push("");
+    lines.push("Mois,Réservations");
+    for (const m of stats.monthlyData) {
+      lines.push(`${m.month},${m.count}`);
+    }
+  }
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `carguinee-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const STATUS_LABELS: Record<string, string> = {
   CONFIRMEE: "Confirmée",
   EN_COURS: "En cours",
@@ -231,8 +288,8 @@ export function StatsPage() {
             : t("stats.clientSubtitle", { defaultValue: "Suivi de vos réservations, dépenses et fidélité." })}
         </p>
 
-        {/* ── Filtres période ── */}
-        <div className="mt-4 flex flex-wrap gap-2">
+        {/* ── Filtres + Export ── */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.value}
@@ -246,6 +303,12 @@ export function StatsPage() {
               {t(opt.labelKey, { defaultValue: opt.defaultLabel })}
             </button>
           ))}
+          <button
+            onClick={() => exportCSV(stats)}
+            className="ml-auto rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            📥 {t("stats.exportCsv", { defaultValue: "Export CSV" })}
+          </button>
         </div>
 
         {/* ── Cartes résumé ── */}

@@ -1022,6 +1022,23 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your preferences and account settings.",
+    "appearance": "Appearance",
+    "darkMode": "Dark mode",
+    "darkModeOn": "On — dark interface",
+    "darkModeOff": "Off — light interface",
+    "toggleTheme": "Toggle theme",
+    "language": "Language",
+    "languageLabel": "Interface language",
+    "notifications": "Notifications",
+    "emailNotif": "Email notifications",
+    "emailNotifDesc": "Receive confirmations and updates by email.",
+    "smsNotif": "SMS notifications",
+    "smsNotifDesc": "Receive booking alerts by SMS.",
+    "pushNotif": "Push notifications",
+    "pushNotifDesc": "Real-time alerts in the app.",
+    "chatNotif": "Chatbot messages",
+    "chatNotifDesc": "Receive tips and suggestions from the assistant.",
+    "account": "Account",
     "profile": "My Profile",
     "profileDesc": "Edit your name, email and photo.",
     "loyalty": "Loyalty Program",
@@ -1078,7 +1095,8 @@
     "noBookings": "No bookings yet.",
     "period7d": "7 days",
     "period30d": "30 days",
-    "period6m": "6 months"
+    "period6m": "6 months",
+    "exportCsv": "Export CSV"
   },
   "help": {
     "title": "Help & Support",
