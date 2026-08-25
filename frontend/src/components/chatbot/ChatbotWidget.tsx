@@ -67,7 +67,7 @@ export function ChatbotWidget() {
         body: JSON.stringify({
           sessionId,
           message,
-          lang: i18n.language === "fr" ? "fr" : "en",
+          lang: i18n.language?.startsWith("fr") ? "fr" : "en",
         }),
       }),
     onSuccess: (resp: { status: string; data: ChatResponse }) => {

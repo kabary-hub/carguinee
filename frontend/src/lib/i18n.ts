@@ -21,6 +21,7 @@ i18n
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
+      key: "preferredLanguage",
     },
   });
 
