@@ -23,13 +23,7 @@ function sinceDate(period: Period): Date {
   }
 }
 
-function periodInterval(period: Period): string {
-  switch (period) {
-    case "7d": return "7 days";
-    case "30d": return "30 days";
-    case "6m": return "6 months";
-  }
-}
+
 
 /**
  * GET /api/stats?period=7d|30d|6m
@@ -41,7 +35,6 @@ statsRouter.get("/", requireAuth, async (request, response) => {
   const role = request.auth?.role;
   const period = parsePeriod(request.query.period);
   const since = sinceDate(period);
-  const interval = periodInterval(period);
 
   try {
     if (role === "PROPRIETAIRE" || role === "ADMIN") {
@@ -93,14 +86,14 @@ statsRouter.get("/", requireAuth, async (request, response) => {
         // Réservations par mois sur la période
         prisma.$queryRaw`
           SELECT
-            TO_CHAR("createdAt", 'YYYY-MM') AS month,
+            TO_CHAR(rb."createdAt", 'YYYY-MM') AS month,
             COUNT(*)::int AS count,
-            COALESCE(SUM(CASE WHEN "status" IN ('CONFIRMEE','EN_COURS','TERMINEE') THEN "totalAmountGnf" ELSE 0 END), 0)::int AS revenue
+            COALESCE(SUM(CASE WHEN rb."status" IN ('CONFIRMEE','EN_COURS','TERMINEE') THEN rb."totalAmountGnf" ELSE 0 END), 0)::int AS revenue
           FROM "RentalBooking" rb
           JOIN "Vehicle" v ON rb."vehicleId" = v."id"
           WHERE v."ownerId" = ${userId}
-            AND rb."createdAt" >= NOW() - ${`INTERVAL '${interval}'`}::interval
-          GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
+            AND rb."createdAt" >= ${since}
+          GROUP BY TO_CHAR(rb."createdAt", 'YYYY-MM')
           ORDER BY month ASC
         `,
         // Top véhicules les plus réservés sur la période
@@ -212,7 +205,7 @@ statsRouter.get("/", requireAuth, async (request, response) => {
             COUNT(*)::int AS count
           FROM "RentalBooking"
           WHERE "customerId" = ${userId}
-            AND "createdAt" >= NOW() - ${`INTERVAL '${interval}'`}::interval
+            AND "createdAt" >= ${since}
           GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
           ORDER BY month ASC
         `,
