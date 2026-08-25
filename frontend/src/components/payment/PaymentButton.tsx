@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getStoredToken } from "../../lib/api";
+import { useToast } from "../../contexts/ToastContext";
 
 interface PaymentButtonProps {
   bookingId: string;
@@ -25,6 +26,7 @@ export function PaymentButton({ bookingId, amount, onSuccess }: PaymentButtonPro
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { showToast } = useToast();
 
   // Mode simulation si pas de clés API (détection côté frontend)
   const isSimulation = !import.meta.env.VITE_OM_ENABLED;
@@ -51,6 +53,8 @@ export function PaymentButton({ bookingId, amount, onSuccess }: PaymentButtonPro
       const data = await response.json();
 
       if (data.status === "ok" && data.data.payment_url) {
+        // Toast de confirmation orange
+        showToast(t("payment.successToast", "Paiement Orange Money initié avec succès ! 📱"), "info");
         // En mode simulation, le backend retourne directement l'URL de succès
         // En mode réel, on redirige vers la page Orange Money
         window.location.href = data.data.payment_url;
@@ -78,7 +82,7 @@ export function PaymentButton({ bookingId, amount, onSuccess }: PaymentButtonPro
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
           <div
             className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900 sm:p-8"
             onMouseLeave={() => setError("")}

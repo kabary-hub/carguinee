@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-type ToastType = "success" | "error";
+type ToastType = "success" | "error" | "info";
 
 type ToastItem = {
   id: number;
@@ -50,10 +50,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={`pointer-events-auto flex items-start gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg ${
               toast.type === "success"
                 ? "bg-emerald-600"
-                : "bg-rose-600"
+                : toast.type === "info"
+                  ? "bg-orange-500"
+                  : "bg-rose-600"
             }`}
           >
-            <span aria-hidden="true">{toast.type === "success" ? "✓" : "✕"}</span>
+            <span aria-hidden="true">{toast.type === "success" ? "✓" : toast.type === "info" ? "📱" : "✕"}</span>
             <span>{toast.message}</span>
           </div>
         ))}
