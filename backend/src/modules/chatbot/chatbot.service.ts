@@ -29,9 +29,9 @@ interface DirectReply {
 }
 
 const DIRECT_REPLIES: DirectReply[] = [
-  // Salutations
+  // Salutations (toujours en premier)
   {
-    patterns: [/\b(bonjour|salut|hello|coucou|hey|bonsoir|good morning|good evening)\b/i],
+    patterns: [/(bonjour|salut|hello|coucou|hey|bonsoir|good morning|good evening)/i],
     response: {
       fr: "Bonjour ! 👋 Je suis l'assistant CarGuinée. Comment puis-je vous aider aujourd'hui ?",
       en: "Hello! 👋 I'm the CarGuinée assistant. How can I help you today?",
@@ -43,7 +43,7 @@ const DIRECT_REPLIES: DirectReply[] = [
   },
   // Merci
   {
-    patterns: [/\b(merci|thanks|thank you|remercie|super merci)\b/i],
+    patterns: [/(merci|thanks|thank you|remercie|super merci)/i],
     response: {
       fr: "Avec plaisir ! 😊 N'hésitez pas si vous avez d'autres questions.",
       en: "You're welcome! 😊 Feel free to ask if you have more questions.",
@@ -51,27 +51,31 @@ const DIRECT_REPLIES: DirectReply[] = [
   },
   // Au revoir
   {
-    patterns: [/\b(au revoir|bye|à bientôt|goodbye|see you|ciao)\b/i],
+    patterns: [/(au revoir|bye|à bientôt|goodbye|see you|ciao)/i],
     response: {
       fr: "Au revoir ! 👋 Passez une bonne journée et à bientôt sur CarGuinée !",
       en: "Goodbye! 👋 Have a great day and see you soon on CarGuinée!",
     },
   },
-  // Réserver
+  // Annulation (AVANT réserver car "annuler reservation" contient "reserv")
   {
-    patterns: [/\b(r[eé]serv|book|location|louer|prendre\s+un\s+vehicule)\b/i],
+    patterns: [/(annul|cancel|rembour|refund)/i],
     response: {
-      fr: "Pour réserver un véhicule :\n\n1️⃣ Parcourez le catalogue (section Véhicules)\n2️⃣ Sélectionnez le véhicule qui vous convient\n3️⃣ Choisissez vos dates de location\n4️⃣ Envoyez votre demande de réservation\n5️⃣ Le propriétaire confirmtera votre réservation\n\nAprès confirmation, vous pourrez payer via Orange Money. 💰",
-      en: "To book a vehicle:\n\n1️⃣ Browse the catalog (Vehicles section)\n2️⃣ Select the vehicle you like\n3️⃣ Choose your rental dates\n4️⃣ Send your booking request\n5️⃣ The owner will confirm your booking\n\nAfter confirmation, you can pay via Orange Money. 💰",
+      fr: "Pour annuler une réservation :\n\n1️⃣ Allez dans « Mes réservations »\n2️⃣ Sélectionnez la réservation concernée\n3️⃣ Cliquez sur « Annuler »\n\n⚠️ L'annulation est possible avant le début de la location. Le remboursement dépend de la politique d'annulation du propriétaire.",
+      en: "To cancel a booking:\n\n1️⃣ Go to \"My Bookings\"\n2️⃣ Select the booking\n3️⃣ Click \"Cancel\"\n\n⚠️ Cancellation is possible before the rental starts. Refund depends on the owner's cancellation policy.",
     },
-    suggestions: {
-      fr: ["Comment payer avec Orange Money ?", "Quels sont les tarifs ?", "Comment annuler ?"],
-      en: ["How to pay with Orange Money?", "What are the rates?", "How to cancel?"],
+  },
+  // Tarifs / Prix (AVANT réserver car "combien coute" ne doit pas matcher "reserv")
+  {
+    patterns: [/(prix|tarif|price|rate|cout|co[uû]t|combien|cher)/i],
+    response: {
+      fr: "Les tarifs de location sont fixés par chaque propriétaire et affichés sur la fiche du véhicule. 💰\n\nVous pouvez filtrer le catalogue par prix pour trouver un véhicule dans votre budget.",
+      en: "Rental rates are set by each owner and displayed on the vehicle listing. 💰\n\nYou can filter the catalog by price to find a vehicle within your budget.",
     },
   },
   // Payer
   {
-    patterns: [/\b(pay|paiement|orange\s*money|om|payer|regler|transaction)\b/i],
+    patterns: [/(pay|paiement|orange\s*money|om|payer|regler|transaction)/i],
     response: {
       fr: "Le paiement se fait via **Orange Money** :\n\n1️⃣ Après confirmation de votre réservation, allez dans « Mes réservations »\n2️⃣ Cliquez sur « Paiement OM »\n3️⃣ Entrez votre numéro Orange Money\n4️⃣ Validez sur votre téléphone\n\nLe paiement est sécurisé et instantané. ✅",
       en: "Payment is made via **Orange Money**:\n\n1️⃣ After your booking is confirmed, go to \"My Bookings\"\n2️⃣ Click \"OM Payment\"\n3️⃣ Enter your Orange Money number\n4️⃣ Confirm on your phone\n\nPayment is secure and instant. ✅",
@@ -83,7 +87,7 @@ const DIRECT_REPLIES: DirectReply[] = [
   },
   // Créer un compte
   {
-    patterns: [/\b(inscri|compte|register|account|sign\s*up|créer.*compte)\b/i],
+    patterns: [/(inscri|compte|register|account|sign\s*up|créer.*compte)/i],
     response: {
       fr: "Pour créer un compte CarGuinée :\n\n1️⃣ Cliquez sur « Inscription »\n2️⃣ Entrez votre numéro de téléphone guinéen\n3️⃣ Créez un mot de passe\n4️⃣ Remplissez votre profil\n\nVous pouvez ensuite réserver des véhicules ou devenir propriétaire ! 🚗",
       en: "To create a CarGuinée account:\n\n1️⃣ Click \"Register\"\n2️⃣ Enter your Guinean phone number\n3️⃣ Create a password\n4️⃣ Fill in your profile\n\nYou can then book vehicles or become an owner! 🚗",
@@ -91,34 +95,30 @@ const DIRECT_REPLIES: DirectReply[] = [
   },
   // Devenir propriétaire
   {
-    patterns: [/\b(propri[eé]taire|owner|devenir.*propri|louer.*voiture.*coté|mettre.*en\s*location)\b/i],
+    patterns: [/(propri[eé]taire|owner|devenir.*propri|louer.*voiture.*coté|mettre.*en\s*location)/i],
     response: {
       fr: "Pour devenir propriétaire sur CarGuinée :\n\n1️⃣ Créez un compte client\n2️⃣ Allez dans votre profil et cliquez « Devenir propriétaire »\n3️⃣ Remplissez le formulaire de demande\n4️⃣ Un administrateur examinera votre demande\n\nUne fois approuvé, vous pourrez publier et gérer vos véhicules ! 🚘",
       en: "To become an owner on CarGuinée:\n\n1️⃣ Create a client account\n2️⃣ Go to your profile and click \"Become an owner\"\n3️⃣ Fill in the application form\n4️⃣ An admin will review your request\n\nOnce approved, you can publish and manage your vehicles! 🚘",
     },
   },
+  // Réserver (après annulation/tarifs pour éviter les faux positifs)
+  {
+    patterns: [/(r[eé]serv|book|location|louer|prendre\s+un\s+vehicule)/i],
+    response: {
+      fr: "Pour réserver un véhicule :\n\n1️⃣ Parcourez le catalogue (section Véhicules)\n2️⃣ Sélectionnez le véhicule qui vous convient\n3️⃣ Choisissez vos dates de location\n4️⃣ Envoyez votre demande de réservation\n5️⃣ Le propriétaire confirmtera votre réservation\n\nAprès confirmation, vous pourrez payer via Orange Money. 💰",
+      en: "To book a vehicle:\n\n1️⃣ Browse the catalog (Vehicles section)\n2️⃣ Select the vehicle you like\n3️⃣ Choose your rental dates\n4️⃣ Send your booking request\n5️⃣ The owner will confirm your booking\n\nAfter confirmation, you can pay via Orange Money. 💰",
+    },
+    suggestions: {
+      fr: ["Comment payer avec Orange Money ?", "Quels sont les tarifs ?", "Comment annuler ?"],
+      en: ["How to pay with Orange Money?", "What are the rates?", "How to cancel?"],
+    },
+  },
   // Contact / Support
   {
-    patterns: [/\b(contact|support|aide|help|assistance|joindre|telephone|email|contacter)\b/i],
+    patterns: [/(contact|support|aide|help|assistance|joindre|telephone|email|contacter)/i],
     response: {
       fr: "Vous pouvez nous contacter de plusieurs façons :\n\n💬 Utilisez ce chatbot pour les questions fréquentes\n📧 Envoyez un email au support\n📱 Appelez-nous pendant les heures ouvrées\n\nComment puis-je vous aider ?",
       en: "You can contact us in several ways:\n\n💬 Use this chatbot for FAQ\n📧 Send an email to support\n📱 Call us during business hours\n\nHow can I help you?",
-    },
-  },
-  // Annulation
-  {
-    patterns: [/\b(annul|cancel|rembour|refund)\b/i],
-    response: {
-      fr: "Pour annuler une réservation :\n\n1️⃣ Allez dans « Mes réservations »\n2️⃣ Sélectionnez la réservation concernée\n3️⃣ Cliquez sur « Annuler »\n\n⚠️ L'annulation est possible avant le début de la location. Le remboursement dépend de la politique d'annulation du propriétaire.",
-      en: "To cancel a booking:\n\n1️⃣ Go to \"My Bookings\"\n2️⃣ Select the booking\n3️⃣ Click \"Cancel\"\n\n⚠️ Cancellation is possible before the rental starts. Refund depends on the owner's cancellation policy.",
-    },
-  },
-  // Tarifs / Prix
-  {
-    patterns: [/\b(prix|tarif|price|rate|cout|co[uû]t|combien|cher)\b/i],
-    response: {
-      fr: "Les tarifs de location sont fixés par chaque propriétaire et affichés sur la fiche du véhicule. 💰\n\nVous pouvez filtrer le catalogue par prix pour trouver un véhicule dans votre budget.",
-      en: "Rental rates are set by each owner and displayed on the vehicle listing. 💰\n\nYou can filter the catalog by price to find a vehicle within your budget.",
     },
   },
 ];
