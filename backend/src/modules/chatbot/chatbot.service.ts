@@ -75,7 +75,7 @@ const DIRECT_REPLIES: DirectReply[] = [
   },
   // Payer
   {
-    patterns: [/(pay|paiement|orange\s*money|om|payer|regler|transaction)/i],
+    patterns: [/(paye|paiement|orange money|payer|regler|transaction)/i],
     response: {
       fr: "Le paiement se fait via **Orange Money** :\n\n1️⃣ Après confirmation de votre réservation, allez dans « Mes réservations »\n2️⃣ Cliquez sur « Paiement OM »\n3️⃣ Entrez votre numéro Orange Money\n4️⃣ Validez sur votre téléphone\n\nLe paiement est sécurisé et instantané. ✅",
       en: "Payment is made via **Orange Money**:\n\n1️⃣ After your booking is confirmed, go to \"My Bookings\"\n2️⃣ Click \"OM Payment\"\n3️⃣ Enter your Orange Money number\n4️⃣ Confirm on your phone\n\nPayment is secure and instant. ✅",
