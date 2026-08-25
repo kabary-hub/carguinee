@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../auth/auth.middleware.js";
 import { prisma } from "../../lib/prisma.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
+import { cached } from "../../lib/cache.js";
 
 export const statsRouter = Router();
 
@@ -35,6 +36,8 @@ statsRouter.get("/", requireAuth, async (request, response) => {
   const role = request.auth?.role;
   const period = parsePeriod(request.query.period);
   const since = sinceDate(period);
+  const cacheKey = `stats:${userId}:${period}:${request.auth?.role}`;
+  const cachedResult = await cached(cacheKey, 30_000, async () => {
 
   try {
     if (role === "PROPRIETAIRE" || role === "ADMIN") {
@@ -251,6 +254,8 @@ statsRouter.get("/", requireAuth, async (request, response) => {
       });
     }
   } catch (error) {
-    handleRouteError(error, response, "Erreur lors du calcul des statistiques.");
+    return { status: "error", message: "Erreur lors du calcul des statistiques." } as const;
   }
-});
+  });
+    response.json(cachedResult);
+  });

@@ -1,20 +1,12 @@
-# ══════════════════════════════════════════════════════════════════════════════
-# CarGuinée Frontend — Dockerfile (développement avec HMR)
-# ══════════════════════════════════════════════════════════════════════════════
-
-FROM node:20-alpine
-
+FROM node:20-alpine AS build
 WORKDIR /app
-
-# Installer les dépendances
-COPY package.json package-lock.json* ./
+COPY package*.json ./
 RUN npm ci
-
-# Copier le code source
 COPY . .
+RUN npm run build
 
-# Exposer le port Vite
-EXPOSE 5173
-
-# Démarrer Vite en mode dev
-CMD ["npx", "vite", "--host", "0.0.0.0"]
+FROM nginx:1.25-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/templates/default.conf.template
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

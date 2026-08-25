@@ -1,147 +1,80 @@
-/**
- * Service Worker — Carguinée PWA
- *
- * Stratégies de cache :
- * - App Shell : Cache-First (CSS, JS, fonts)
- * - API Data : Network-First (avec fallback cache)
- * - Images : Stale-While-Revalidate
- * - Pages : Network-First (SPA navigation)
- */
-
-const CACHE_NAME = "carguinee-v1";
-const STATIC_CACHE = "carguinee-static-v1";
-const API_CACHE = "carguinee-api-v1";
-
-// Assets statiques à cacher dès l'installation
+const CACHE_NAME = 'carguine-v1';
 const STATIC_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/locales/fr/translation.json",
-  "/locales/en/translation.json",
+  '/',
+  '/index.html',
+  '/favicon.ico',
+  '/logo192.png',
+  '/logo512.png'
 ];
 
-// Installation : cacher les assets statiques
-self.addEventListener("install", (event) => {
+// Install - cache static assets
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }),
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// Activation : nettoyer les anciens caches
-self.addEventListener("activate", (event) => {
+// Activate - clean old caches
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then(keys => {
       return Promise.all(
-        keys
-          .filter((key) => key !== STATIC_CACHE && key !== API_CACHE)
-          .map((key) => caches.delete(key)),
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       );
-    }),
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Interception des requêtes
-self.addEventListener("fetch", (event) => {
+// Fetch - network first for API, cache first for assets
+self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // ── API requests → Network-First ──
-  if (url.pathname.startsWith("/api/")) {
-    event.respondWith(networkFirst(request, API_CACHE));
+  // API requests: network only (no caching for auth/data freshness)
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
     return;
   }
 
-  // ── Static assets → Cache-First ──
-  if (
-    request.destination === "style" ||
-    request.destination === "script" ||
-    request.destination === "font" ||
-    url.pathname.match(/\.(js|css|woff2?|ttf|eot|ico|svg)$/i)
-  ) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+  // Static assets: cache first, network fallback
+  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|gif|svg|woff2?|ico)$/)) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) return cached;
+        return fetch(request).then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          return response;
+        });
+      })
+    );
     return;
   }
 
-  // ── Images → Stale-While-Revalidate ──
-  if (request.destination === "image" || url.pathname.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
-    event.respondWith(staleWhileRevalidate(request, STATIC_CACHE));
-    return;
-  }
-
-  // ── SPA Navigation → Network-First with offline fallback ──
-  if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request, STATIC_CACHE));
-    return;
-  }
-
-  // ── Default → Network-First ──
-  event.respondWith(networkFirst(request, API_CACHE));
+  // Everything else: network with cache fallback
+  event.respondWith(
+    fetch(request).catch(() => caches.match(request))
+  );
 });
 
-// ── Stratégies de cache ─────────────────────────────────────────────────
-
-async function cacheFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return new Response("Offline", { status: 503 });
-  }
-}
-
-async function networkFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-
-    // Fallback pour la navigation SPA
-    if (request.mode === "navigate") {
-      const indexResponse = await cache.match("/index.html");
-      if (indexResponse) return indexResponse;
-    }
-
-    return new Response(
-      JSON.stringify({ error: "Vous êtes hors ligne. Vérifiez votre connexion." }),
-      {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
-}
-
-async function staleWhileRevalidate(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-
-  const fetchPromise = fetch(request)
-    .then((response) => {
-      if (response.ok) {
-        cache.put(request, response.clone());
-      }
-      return response;
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  const data = event.data.json();
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'CarGuinée', {
+      body: data.body || 'Nouvelle notification',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: data.url || '/',
     })
-    .catch(() => cached);
+  );
+});
 
-  return cached || fetchPromise;
-}
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data || '/';
+  event.waitUntil(clients.openWindow(url));
+});
