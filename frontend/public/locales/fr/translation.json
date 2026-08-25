@@ -42,7 +42,12 @@
     "messages": "Messages",
     "logout": "Déconnexion",
     "login": "Connexion",
-    "register": "Inscription"
+    "register": "Inscription",
+    "loyalty": "Fidélité",
+    "settings": "Paramètres",
+    "stats": "Statistiques",
+    "payments": "Paiements",
+    "help": "Aide"
   },
   "auth": {
     "login": {
@@ -1013,5 +1018,41 @@
     "navLink": "Booster",
     "dashboardCTA": "Mettre en avant mes véhicules",
     "dashboardHint": "Plus de visibilité = plus de réservations"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Gérez vos préférences et paramètres de compte.",
+    "profile": "Mon profil",
+    "profileDesc": "Modifier votre nom, email et photo.",
+    "loyalty": "Programme de fidélité",
+    "loyaltyDesc": "Consultez vos points et l'historique des gains.",
+    "referral": "Parrainage",
+    "referralDesc": "Invitez vos amis et gagnez des points."
+  },
+  "payments": {
+    "title": "Mes paiements",
+    "subtitle": "Consultez l'historique de vos transactions et reçus.",
+    "comingSoon": "Bientôt disponible",
+    "comingSoonDesc": "L'historique détaillé des paiements Orange Money et les reçus téléchargeables seront ajoutés prochainement."
+  },
+  "stats": {
+    "title": "Statistiques",
+    "subtitle": "Consultez vos statistiques de location et de revenus.",
+    "comingSoon": "Bientôt disponible",
+    "comingSoonDesc": "Les graphiques de revenus, taux d'occupation et analyses détaillées seront ajoutés prochainement."
+  },
+  "help": {
+    "title": "Aide & Support",
+    "subtitle": "Besoin d'aide ? Consultez nos questions fréquentes ou contactez-nous.",
+    "faq": "Questions fréquentes",
+    "q1": "Comment créer un compte ?",
+    "a1": "Cliquez sur 'Inscription' et remplissez le formulaire avec votre numéro de téléphone.",
+    "q2": "Comment réserver un véhicule ?",
+    "a2": "Parcourez le catalogue, sélectionnez un véhicule, choisissez les dates et envoyez votre demande.",
+    "q3": "Comment payer avec Orange Money ?",
+    "a3": "Après confirmation de votre réservation, cliquez sur 'Paiement OM' et suivez les instructions.",
+    "assistant": "Assistant virtuel",
+    "assistantDesc": "Utilisez le bouton 💬 en bas à droite de l'écran pour poser vos questions à notre assistant.",
+    "legal": "Documents légaux"
   }
 }

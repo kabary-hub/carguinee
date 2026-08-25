@@ -42,7 +42,12 @@
     "messages": "Messages",
     "logout": "Logout",
     "login": "Login",
-    "register": "Register"
+    "register": "Register",
+    "loyalty": "Loyalty",
+    "settings": "Settings",
+    "stats": "Stats",
+    "payments": "Payments",
+    "help": "Help"
   },
   "auth": {
     "login": {
@@ -1013,5 +1018,41 @@
     "navLink": "Boost",
     "dashboardCTA": "Showcase my vehicles",
     "dashboardHint": "More visibility = more bookings"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your preferences and account settings.",
+    "profile": "My Profile",
+    "profileDesc": "Edit your name, email and photo.",
+    "loyalty": "Loyalty Program",
+    "loyaltyDesc": "View your points and earnings history.",
+    "referral": "Referral",
+    "referralDesc": "Invite your friends and earn points."
+  },
+  "payments": {
+    "title": "My Payments",
+    "subtitle": "View your transaction history and receipts.",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "Detailed Orange Money payment history and downloadable receipts will be added soon."
+  },
+  "stats": {
+    "title": "Statistics",
+    "subtitle": "View your rental and revenue statistics.",
+    "comingSoon": "Coming Soon",
+    "comingSoonDesc": "Revenue charts, occupancy rates and detailed analytics will be added soon."
+  },
+  "help": {
+    "title": "Help & Support",
+    "subtitle": "Need help? Check our FAQ or contact us.",
+    "faq": "Frequently Asked Questions",
+    "q1": "How to create an account?",
+    "a1": "Click 'Register' and fill in the form with your phone number.",
+    "q2": "How to book a vehicle?",
+    "a2": "Browse the catalog, select a vehicle, choose dates and send your request.",
+    "q3": "How to pay with Orange Money?",
+    "a3": "After your booking is confirmed, click 'OM Payment' and follow the instructions.",
+    "assistant": "Virtual Assistant",
+    "assistantDesc": "Use the 💬 button at the bottom right of the screen to ask our assistant your questions.",
+    "legal": "Legal Documents"
   }
 }

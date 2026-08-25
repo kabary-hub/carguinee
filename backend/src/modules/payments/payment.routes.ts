@@ -175,7 +175,7 @@ paymentRouter.post("/boost", requireAuth, async (request, response) => {
       // Créer un paiement simulé directement en statut PAID
       const payment = await prisma.payment.create({
         data: {
-          bookingId: "00000000-0000-0000-0000-000000000000", // Pas de booking pour un boost
+          bookingId: null, // Pas de booking pour un boost
           userId,
           amount,
           provider: "ORANGE_MONEY",

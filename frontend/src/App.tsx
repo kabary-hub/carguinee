@@ -29,6 +29,10 @@ const PolitiqueConfidentialitePage = lazy(() => import("./pages/legal/PolitiqueC
 const RegistreTraitementsPage = lazy(() => import("./pages/legal/RegistreTraitementsPage").then((m) => ({ default: m.RegistreTraitementsPage })));
 const ReferralPage = lazy(() => import("./pages/client/ReferralPage").then((m) => ({ default: m.ReferralPage })));
 const LoyaltyPage = lazy(() => import("./pages/client/LoyaltyPage").then((m) => ({ default: m.LoyaltyPage })));
+const SettingsPage = lazy(() => import("./pages/client/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const StatsPage = lazy(() => import("./pages/client/StatsPage").then((m) => ({ default: m.StatsPage })));
+const PaymentsPage = lazy(() => import("./pages/client/PaymentsPage").then((m) => ({ default: m.PaymentsPage })));
+const HelpPage = lazy(() => import("./pages/client/HelpPage").then((m) => ({ default: m.HelpPage })));
 
 // ── Fallback de chargement ──────────────────────────────────────────────────
 function PageFallback() {
@@ -56,6 +60,10 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/profil" element={<ProfilePage />} />
           <Route path="/reservations" element={<MyBookingsPage />} />
+          <Route path="/parametres" element={<SettingsPage />} />
+          <Route path="/statistiques" element={<StatsPage />} />
+          <Route path="/paiements" element={<PaymentsPage />} />
+          <Route path="/aide" element={<HelpPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["PROPRIETAIRE", "ADMIN"]} />}>
           <Route path="/proprietaire" element={<OwnerDashboardPage />} />
