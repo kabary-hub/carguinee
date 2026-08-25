@@ -234,6 +234,155 @@ const FAQ_ENTRIES = [
     keywords: ["heure", "ouverture", "disponible", "horaire", "horaires", "24h", "weekend"],
     sortOrder: 61,
   },
+
+  // ═══════════════════════ CONDITIONS DE LOCATION ═══════════════════════
+  {
+    questionFr: "Quelle est la durée minimum de location ?",
+    questionEn: "What is the minimum rental duration?",
+    answerFr: "La durée minimum de location est d'une journée. Vous pouvez louer un véhicule pour 1 jour ou plus.",
+    answerEn: "The minimum rental duration is one day. You can rent a vehicle for 1 day or more.",
+    category: "BOOKING",
+    keywords: ["durée", "minimum", "jour", "temps", "combien", "période"],
+    sortOrder: 24,
+  },
+  {
+    questionFr: "Quel est le kilométrage inclus dans la location ?",
+    questionEn: "What mileage is included in the rental?",
+    answerFr: "Le kilométrage inclus varie selon le propriétaire. Les conditions sont affichées sur la fiche du véhicule.",
+    answerEn: "Included mileage varies by owner. Conditions are displayed on the vehicle listing.",
+    category: "BOOKING",
+    keywords: ["kilométrage", "km", "distance", "limite", "dépassement"],
+    sortOrder: 25,
+  },
+  {
+    questionFr: "Puis-je louer un véhicule pour une demi-journée ?",
+    questionEn: "Can I rent a vehicle for half a day?",
+    answerFr: "La location se fait à la journée complète. Contactez le propriétaire via les messages pour négocier.",
+    answerEn: "Rentals are for full days only. Contact the owner via messages to negotiate.",
+    category: "BOOKING",
+    keywords: ["demi-journée", "mi-temps", "court", "heures"],
+    sortOrder: 26,
+  },
+
+  // ═══════════════════════ CAUTION ET SÉCURITÉ ═══════════════════════
+  {
+    questionFr: "Comment est restituée la caution ?",
+    questionEn: "How is the deposit refunded?",
+    answerFr: "La caution est restituée dans les 48h suivant la restitution du véhicule en bon état.",
+    answerEn: "The deposit is refunded within 48h of returning the vehicle in good condition.",
+    category: "PAYMENT",
+    keywords: ["caution", "restitution", "remboursement", "retour", "garantie"],
+    sortOrder: 34,
+  },
+  {
+    questionFr: "Que se passe-t-il en cas de dommage au véhicule ?",
+    questionEn: "What happens if the vehicle is damaged?",
+    answerFr: "En cas de dommage, la caution peut être retenue. Un rapport d'état est établi à la restitution.",
+    answerEn: "In case of damage, the deposit may be retained. A condition report is prepared at return.",
+    category: "BOOKING",
+    keywords: ["dommage", "accident", "dégât", "réparation", "casse", "rayure"],
+    sortOrder: 27,
+  },
+  {
+    questionFr: "Le véhicule est-il assuré ?",
+    questionEn: "Is the vehicle insured?",
+    answerFr: "Tous les véhicules publiés doivent être assurés. L'assurance est valable pendant la location.",
+    answerEn: "All published vehicles must be insured. Insurance is valid during the rental.",
+    category: "VEHICLE",
+    keywords: ["assurance", "assuré", "couverture", "sinistre", "responsabilité"],
+    sortOrder: 44,
+  },
+
+  // ═══════════════════════ DOCUMENTS ═══════════════════════
+  {
+    questionFr: "Quels documents dois-je fournir pour louer ?",
+    questionEn: "What documents do I need to rent?",
+    answerFr: "Présentez une pièce d'identité valide (CIN ou passeport) et votre téléphone vérifié sur CarGuinée.",
+    answerEn: "Present a valid ID (national ID or passport) and your phone verified on CarGuinée.",
+    category: "BOOKING",
+    keywords: ["document", "pièce", "identité", "cin", "passeport", "papiers"],
+    sortOrder: 28,
+  },
+  {
+    questionFr: "Comment fonctionne la vérification d'identité ?",
+    questionEn: "How does identity verification work?",
+    answerFr: "Soumettez une photo de votre CIN, passeport ou permis via votre profil. Un admin validera sous 24-48h.",
+    answerEn: "Submit a photo of your ID, passport or license via your profile. An admin will validate within 24-48h.",
+    category: "ACCOUNT",
+    keywords: ["vérification", "identité", "cin", "passeport", "permis", "valider"],
+    sortOrder: 14,
+  },
+
+  // ═══════════════════════ ACHAT DE VÉHICULE ═══════════════════════
+  {
+    questionFr: "Puis-je acheter un véhicule sur CarGuinée ?",
+    questionEn: "Can I buy a vehicle on CarGuinée?",
+    answerFr: "Oui ! Utilisez le filtre Vente dans le catalogue pour voir les véhicules à acheter.",
+    answerEn: "Yes! Use the Sale filter in the catalog to see vehicles for purchase.",
+    category: "VEHICLE",
+    keywords: ["acheter", "vente", "achat", "racheter"],
+    sortOrder: 45,
+  },
+  {
+    questionFr: "Comment se déroule l'achat d'un véhicule ?",
+    questionEn: "How does the vehicle purchase process work?",
+    answerFr: "Trouvez un véhicule à la vente, contactez le propriétaire, arrangez une visite et négociez le prix.",
+    answerEn: "Find a vehicle for sale, contact the owner, arrange a visit and negotiate the price.",
+    category: "VEHICLE",
+    keywords: ["achat", "acheter", "vente", "négocier", "visite", "essai"],
+    sortOrder: 46,
+  },
+
+  // ═══════════════════════ MESSAGES ET FAVORIS ═══════════════════════
+  {
+    questionFr: "Comment contacter le propriétaire d'un véhicule ?",
+    questionEn: "How to contact a vehicle owner?",
+    answerFr: "Contactez le propriétaire via la messagerie intégrée. Ouvrez la fiche du véhicule et cliquez Contacter.",
+    answerEn: "Contact the owner via the built-in messaging. Open the vehicle listing and click Contact.",
+    category: "GENERAL",
+    keywords: ["contacter", "propriétaire", "message", "conversation", "discuter"],
+    sortOrder: 62,
+  },
+  {
+    questionFr: "Comment ajouter un véhicule en favori ?",
+    questionEn: "How to add a vehicle to favorites?",
+    answerFr: "Cliquez sur l'icône ❤️ sur la fiche du véhicule. Retrouvez vos favoris dans le menu sidebar.",
+    answerEn: "Click the ❤️ icon on the vehicle listing. Find your favorites in the sidebar menu.",
+    category: "GENERAL",
+    keywords: ["favori", "favoris", "like", "aimer", "sauvegarder"],
+    sortOrder: 63,
+  },
+
+  // ═══════════════════════ PROPRIÉTAIRE ═══════════════════════
+  {
+    questionFr: "Comment publier un véhicule sur CarGuinée ?",
+    questionEn: "How to list a vehicle on CarGuinée?",
+    answerFr: "Allez dans votre espace propriétaire, cliquez Ajouter un véhicule, remplissez les infos et soumettez.",
+    answerEn: "Go to your owner dashboard, click Add a vehicle, fill in the info and submit.",
+    category: "VEHICLE",
+    keywords: ["publier", "publication", "ajouter", "annonce", "poster"],
+    sortOrder: 47,
+  },
+  {
+    questionFr: "Combien de véhicules puis-je publier ?",
+    questionEn: "How many vehicles can I list?",
+    answerFr: "Il n'y a pas de limite. Vous pouvez ajouter autant de véhicules que vous le souhaitez.",
+    answerEn: "There is no limit. You can add as many vehicles as you want.",
+    category: "VEHICLE",
+    keywords: ["nombre", "limite", "combien", "quantité", "maximum"],
+    sortOrder: 48,
+  },
+
+  // ═══════════════════════ SÉCURITÉ ═══════════════════════
+  {
+    questionFr: "Mes données personnelles sont-elles protégées ?",
+    questionEn: "Are my personal data protected?",
+    answerFr: "Oui, CarGuinée protège vos données conformément au RGPD. Exportez ou supprimez vos données depuis les paramètres.",
+    answerEn: "Yes, CarGuinée protects your data in compliance with GDPR. Export or delete your data from settings.",
+    category: "GENERAL",
+    keywords: ["données", "protégé", "sécurité", "confidentialité", "rgpd", "vie privée"],
+    sortOrder: 64,
+  },
 ];
 
 async function main() {
