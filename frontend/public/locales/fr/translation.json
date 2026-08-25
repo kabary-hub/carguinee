@@ -1031,9 +1031,23 @@
   },
   "payments": {
     "title": "Mes paiements",
-    "subtitle": "Consultez l'historique de vos transactions et reçus.",
-    "comingSoon": "Bientôt disponible",
-    "comingSoonDesc": "L'historique détaillé des paiements Orange Money et les reçus téléchargeables seront ajoutés prochainement."
+    "subtitle": "Consultez l'historique de vos transactions Orange Money.",
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "totalPaid": "Total payé",
+    "pending": "En attente",
+    "totalTransactions": "Total transactions",
+    "transactions": "transaction(s)",
+    "noPayments": "Aucun paiement",
+    "noPaymentsDesc": "Vos transactions Orange Money apparaîtront ici.",
+    "provider": "Fournisseur",
+    "phone": "Téléphone",
+    "txId": "Réf. transaction",
+    "paidAt": "Payé le",
+    "bookingDates": "Dates réservation",
+    "bookingStatus": "Statut réservation",
+    "simulated": "Paiement simulé (mode démo)",
+    "unknownVehicle": "Véhicule inconnu"
   },
   "stats": {
     "title": "Statistiques",
