@@ -9,6 +9,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
+import { SkeletonBar, SkeletonListRow } from "../../components/ui";
 import { PaymentButton } from "../../components/payment/PaymentButton";
 import { formatDate, formatGnf, type ApiResponse, type Booking } from "../../lib/domain";
 import { getHomeRouteForRole } from "../../lib/roles";
@@ -19,6 +20,7 @@ export function MyBookingsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
@@ -34,10 +36,13 @@ export function MyBookingsPage() {
   const isOwner = user?.role === "PROPRIETAIRE" || user?.role === "ADMIN";
   const bookingsEndpoint = isOwner ? "/api/bookings/owner" : "/api/bookings/mine";
 
-  const load = () =>
-    apiFetch<ApiResponse<Booking[]>>(bookingsEndpoint)
+  const load = () => {
+    setLoading(true);
+    return apiFetch<ApiResponse<Booking[]>>(bookingsEndpoint)
       .then((payload) => setBookings(payload.data))
-      .catch((reason: Error) => setError(reason.message));
+      .catch((reason: Error) => setError(reason.message))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     void load();
@@ -137,7 +142,29 @@ export function MyBookingsPage() {
         )}
 
         <div className="mt-8 space-y-4">
-          {bookings
+          {loading && bookings.length === 0 && (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex flex-col justify-between gap-4 sm:flex-row">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <SkeletonBar width="180px" height={20} />
+                        <SkeletonBar width={70} height={22} rounded="full" />
+                      </div>
+                      <SkeletonBar width="250px" height={14} className="mt-3" />
+                      <SkeletonBar width="150px" height={14} className="mt-2" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <SkeletonBar width={100} height={14} />
+                      <SkeletonBar width={80} height={32} rounded="lg" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && bookings
             .filter((b) => !statusFilter || b.status === statusFilter)
             .map((booking) => (
             <article

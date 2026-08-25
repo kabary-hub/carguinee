@@ -6,6 +6,7 @@ import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
+import { SkeletonBar, SkeletonListRow } from "../../components/ui";
 import { getHomeRouteForRole } from "../../lib/roles";
 
 /**
@@ -119,7 +120,18 @@ export function NotificationsPage() {
         )}
 
         {loading && (
-          <p className="mt-10 text-center text-sm text-slate-500 dark:text-slate-400">{t("common.loading")}</p>
+          <div className="mt-6 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <SkeletonBar width={24} height={24} rounded="lg" />
+                <div className="flex-1 space-y-2">
+                  <SkeletonBar width="60%" height={14} />
+                  <SkeletonBar width="80%" height={12} />
+                  <SkeletonBar width="40%" height={10} />
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && notifications.length === 0 && (
