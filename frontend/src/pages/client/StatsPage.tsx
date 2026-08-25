@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
 import { SkeletonBar, SkeletonCard, SkeletonCardBlock, SkeletonListRow } from "../../components/ui";
+import { apiFetch } from "../../lib/api";
 import {
   BarChart,
   Bar,
@@ -190,8 +191,7 @@ export function StatsPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/stats?period=${period}`, { credentials: "include" });
-        const json = await res.json();
+        const json = await apiFetch<{ status: string; data: Stats; message?: string }>(`/api/stats?period=${period}`);
         if (json.status === "ok") setStats(json.data);
         else setError(json.message || "Erreur de chargement");
       } catch {

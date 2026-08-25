@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
 import { SkeletonBar, SkeletonCard, SkeletonListRow } from "../../components/ui";
+import { apiFetch } from "../../lib/api";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -92,8 +93,7 @@ export function PaymentsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/payments/history?page=${page}&pageSize=10`, { credentials: "include" });
-      const json = await res.json();
+      const json = await apiFetch<{ status: string; data: { items: PaymentItem[]; pagination: Pagination }; message?: string }>(`/api/payments/history?page=${page}&pageSize=10`);
       if (json.status === "ok") {
         setPayments(json.data.items);
         setPagination(json.data.pagination);
