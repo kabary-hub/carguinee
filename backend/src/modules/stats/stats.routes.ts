@@ -5,16 +5,43 @@ import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 
 export const statsRouter = Router();
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+type Period = "7d" | "30d" | "6m";
+
+function parsePeriod(raw: unknown): Period {
+  if (raw === "7d" || raw === "30d" || raw === "6m") return raw;
+  return "6m"; // défaut
+}
+
+function sinceDate(period: Period): Date {
+  const now = Date.now();
+  switch (period) {
+    case "7d": return new Date(now - 7 * 24 * 60 * 60 * 1000);
+    case "30d": return new Date(now - 30 * 24 * 60 * 60 * 1000);
+    case "6m": return new Date(now - 180 * 24 * 60 * 60 * 1000);
+  }
+}
+
+function periodInterval(period: Period): string {
+  switch (period) {
+    case "7d": return "7 days";
+    case "30d": return "30 days";
+    case "6m": return "6 months";
+  }
+}
+
 /**
- * GET /api/stats
- * Retourne les statistiques de l'utilisateur connecté :
- * - Client : nombre de réservations, dépensées, favoris, points fidélité
- * - Propriétaire : revenus, réservations reçues, véhicules publiés, taux d'occupation
+ * GET /api/stats?period=7d|30d|6m
+ * Retourne les statistiques de l'utilisateur connecté filtrées par période.
  */
 statsRouter.get("/", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
   const role = request.auth?.role;
+  const period = parsePeriod(request.query.period);
+  const since = sinceDate(period);
+  const interval = periodInterval(period);
 
   try {
     if (role === "PROPRIETAIRE" || role === "ADMIN") {
@@ -28,13 +55,13 @@ statsRouter.get("/", requireAuth, async (request, response) => {
         topVehicles,
         recentBookings,
       ] = await Promise.all([
-        // Nombre total de véhicules du propriétaire
+        // Nombre total de véhicules du propriétaire (pas de filtre period)
         prisma.vehicle.count({ where: { ownerId: userId } }),
-        // Véhicules publiés
+        // Véhicules publiés (pas de filtre period)
         prisma.vehicle.count({ where: { ownerId: userId, publicationStatus: "PUBLIEE" } }),
-        // Réservations reçues sur les véhicules du propriétaire
+        // Réservations reçues sur la période
         prisma.rentalBooking.findMany({
-          where: { vehicle: { ownerId: userId } },
+          where: { vehicle: { ownerId: userId }, createdAt: { gte: since } },
           select: {
             id: true,
             status: true,
@@ -47,22 +74,23 @@ statsRouter.get("/", requireAuth, async (request, response) => {
           },
           orderBy: { createdAt: "desc" },
         }),
-        // Revenu total (réservations confirmées/en cours/terminées)
+        // Revenu total sur la période (réservations confirmées/en cours/terminées)
         prisma.rentalBooking.aggregate({
           where: {
             vehicle: { ownerId: userId },
             status: { in: ["CONFIRMEE", "EN_COURS", "TERMINEE"] },
+            createdAt: { gte: since },
           },
           _sum: { totalAmountGnf: true },
           _count: { _all: true },
         }),
-        // Réservations par statut
+        // Réservations par statut sur la période
         prisma.rentalBooking.groupBy({
           by: ["status"],
-          where: { vehicle: { ownerId: userId } },
+          where: { vehicle: { ownerId: userId }, createdAt: { gte: since } },
           _count: { _all: true },
         }),
-        // Réservations par mois (6 derniers mois)
+        // Réservations par mois sur la période
         prisma.$queryRaw`
           SELECT
             TO_CHAR("createdAt", 'YYYY-MM') AS month,
@@ -71,22 +99,22 @@ statsRouter.get("/", requireAuth, async (request, response) => {
           FROM "RentalBooking" rb
           JOIN "Vehicle" v ON rb."vehicleId" = v."id"
           WHERE v."ownerId" = ${userId}
-            AND rb."createdAt" >= NOW() - INTERVAL '6 months'
+            AND rb."createdAt" >= NOW() - ${`INTERVAL '${interval}'`}::interval
           GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
           ORDER BY month ASC
         `,
-        // Top véhicules les plus réservés
+        // Top véhicules les plus réservés sur la période
         prisma.rentalBooking.groupBy({
           by: ["vehicleId"],
-          where: { vehicle: { ownerId: userId } },
+          where: { vehicle: { ownerId: userId }, createdAt: { gte: since } },
           _count: { _all: true },
           _sum: { totalAmountGnf: true },
           orderBy: { _count: { vehicleId: "desc" } },
           take: 5,
         }),
-        // 5 dernières réservations
+        // 5 dernières réservations sur la période
         prisma.rentalBooking.findMany({
-          where: { vehicle: { ownerId: userId } },
+          where: { vehicle: { ownerId: userId }, createdAt: { gte: since } },
           select: {
             id: true,
             status: true,
@@ -104,21 +132,22 @@ statsRouter.get("/", requireAuth, async (request, response) => {
       const totalRevenue = revenueAgg._sum.totalAmountGnf ?? 0;
       const confirmedCount = revenueAgg._count._all;
 
-      // Taux d'occupation (jours réservés / jours totaux sur 30 jours)
+      // Taux d'occupation sur la période
       const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const periodDays = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+      const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
       const activeBookings = bookingsAsOwner.filter(
         (b) =>
           ["CONFIRMEE", "EN_COURS"].includes(b.status) &&
           new Date(b.startDate) <= now &&
-          new Date(b.endDate) >= thirtyDaysAgo,
+          new Date(b.endDate) >= periodStart,
       );
       const bookedDays = activeBookings.reduce((acc, b) => {
-        const start = new Date(Math.max(new Date(b.startDate).getTime(), thirtyDaysAgo.getTime()));
+        const start = new Date(Math.max(new Date(b.startDate).getTime(), periodStart.getTime()));
         const end = new Date(Math.min(new Date(b.endDate).getTime(), now.getTime()));
         return acc + Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
       }, 0);
-      const occupancyRate = Math.min(100, Math.round((bookedDays / 30) * 100));
+      const occupancyRate = Math.min(100, Math.round((bookedDays / periodDays) * 100));
 
       // Enrichir topVehicles avec les noms
       const vehicleIds = topVehicles.map((v) => v.vehicleId);
@@ -132,6 +161,7 @@ statsRouter.get("/", requireAuth, async (request, response) => {
         status: "ok",
         data: {
           role: "PROPRIETAIRE",
+          period,
           summary: {
             totalVehicles,
             publishedVehicles,
@@ -162,16 +192,17 @@ statsRouter.get("/", requireAuth, async (request, response) => {
         loyaltyPoints,
         recentBookings,
       ] = await Promise.all([
-        prisma.rentalBooking.count({ where: { customerId: userId } }),
+        prisma.rentalBooking.count({ where: { customerId: userId, createdAt: { gte: since } } }),
         prisma.rentalBooking.groupBy({
           by: ["status"],
-          where: { customerId: userId },
+          where: { customerId: userId, createdAt: { gte: since } },
           _count: { _all: true },
         }),
         prisma.rentalBooking.aggregate({
           where: {
             customerId: userId,
             status: { in: ["CONFIRMEE", "EN_COURS", "TERMINEE"] },
+            createdAt: { gte: since },
           },
           _sum: { totalAmountGnf: true },
         }),
@@ -181,7 +212,7 @@ statsRouter.get("/", requireAuth, async (request, response) => {
             COUNT(*)::int AS count
           FROM "RentalBooking"
           WHERE "customerId" = ${userId}
-            AND "createdAt" >= NOW() - INTERVAL '6 months'
+            AND "createdAt" >= NOW() - ${`INTERVAL '${interval}'`}::interval
           GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
           ORDER BY month ASC
         `,
@@ -192,7 +223,7 @@ statsRouter.get("/", requireAuth, async (request, response) => {
           select: { balance: true },
         }),
         prisma.rentalBooking.findMany({
-          where: { customerId: userId },
+          where: { customerId: userId, createdAt: { gte: since } },
           select: {
             id: true,
             status: true,
@@ -211,6 +242,7 @@ statsRouter.get("/", requireAuth, async (request, response) => {
         status: "ok",
         data: {
           role: "CLIENT",
+          period,
           summary: {
             totalBookings,
             totalSpent: totalSpent._sum.totalAmountGnf ?? 0,

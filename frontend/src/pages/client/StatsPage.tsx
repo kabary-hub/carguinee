@@ -111,17 +111,28 @@ const STATUS_LABELS: Record<string, string> = {
 
 // ── Composant ───────────────────────────────────────────────────────────────
 
+type Period = "7d" | "30d" | "6m";
+
+const PERIOD_OPTIONS: { value: Period; labelKey: string; defaultLabel: string }[] = [
+  { value: "7d", labelKey: "stats.period7d", defaultLabel: "7 jours" },
+  { value: "30d", labelKey: "stats.period30d", defaultLabel: "30 jours" },
+  { value: "6m", labelKey: "stats.period6m", defaultLabel: "6 mois" },
+];
+
 export function StatsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>("6m");
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch("/api/stats", { credentials: "include" });
+        const res = await fetch(`/api/stats?period=${period}`, { credentials: "include" });
         const json = await res.json();
         if (json.status === "ok") setStats(json.data);
         else setError(json.message || "Erreur de chargement");
@@ -132,7 +143,7 @@ export function StatsPage() {
       }
     };
     fetchStats();
-  }, []);
+  }, [period]);
 
   if (loading) {
     return (
@@ -190,6 +201,23 @@ export function StatsPage() {
             ? t("stats.ownerSubtitle", { defaultValue: "Analyse de vos revenus, véhicules et réservations." })
             : t("stats.clientSubtitle", { defaultValue: "Suivi de vos réservations, dépenses et fidélité." })}
         </p>
+
+        {/* ── Filtres période ── */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {PERIOD_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setPeriod(opt.value)}
+              className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+                period === opt.value
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+              }`}
+            >
+              {t(opt.labelKey, { defaultValue: opt.defaultLabel })}
+            </button>
+          ))}
+        </div>
 
         {/* ── Cartes résumé ── */}
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">

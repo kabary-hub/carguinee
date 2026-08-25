@@ -1075,7 +1075,10 @@
     "totalRevenue": "Total revenue",
     "recentBookings": "Recent bookings",
     "noData": "No data yet.",
-    "noBookings": "No bookings yet."
+    "noBookings": "No bookings yet.",
+    "period7d": "7 days",
+    "period30d": "30 days",
+    "period6m": "6 months"
   },
   "help": {
     "title": "Help & Support",
