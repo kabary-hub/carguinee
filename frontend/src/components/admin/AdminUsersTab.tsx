@@ -22,7 +22,7 @@ type Props = {
 };
 
 const ROLE_FILTERS = ["", "CLIENT", "PROPRIETAIRE", "ADMIN"];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export function AdminUsersTab({ initialRoleFilter = "", toggleUserRole, toggleUserActive, onReload }: Props) {
   const { t } = useTranslation();

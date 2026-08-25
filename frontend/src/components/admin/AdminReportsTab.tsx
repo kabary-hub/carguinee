@@ -1,28 +1,43 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { apiFetch } from "../../lib/api";
+import type { ApiResponse } from "../../lib/domain";
 import type { ReportItem } from "./adminTypes";
 import { ReportDetailsModal } from "./ReportDetailsModal";
 
 type Props = {
-  reports: ReportItem[];
-  setReports: React.Dispatch<React.SetStateAction<ReportItem[]>>;
   showToast: (msg: string, type?: "success" | "error") => void;
 };
 
-/** Action de suppression en attente de confirmation */
+const PAGE_SIZE = 10;
+
 type PendingConfirm = {
   type: "ban-user" | "suspend-vehicle";
   reportId: string;
 };
 
-export function AdminReportsTab({ reports, setReports, showToast }: Props) {
+export function AdminReportsTab({ showToast }: Props) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
-  /** Exécute l'action après confirmation */
+  const { data: result, isLoading: loading } = useQuery({
+    queryKey: ["admin", "reports", page],
+    queryFn: () =>
+      apiFetch<ApiResponse<{ items: ReportItem[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }>>(
+        `/api/admin/reports?page=${page}&pageSize=${PAGE_SIZE}`,
+      ),
+    select: (res) => res.data,
+    placeholderData: (prev) => prev,
+  });
+
+  const reports = result?.items ?? [];
+  const pagination = result?.pagination ?? null;
+
   const executeAction = async () => {
     if (!pendingConfirm) return;
     const { type, reportId } = pendingConfirm;
@@ -31,11 +46,11 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
     try {
       if (type === "ban-user") {
         await apiFetch(`/api/admin/reports/${reportId}/ban-user`, { method: "PATCH" });
-        setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "RESOLVED" } : r));
+        await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
         showToast(t("admin.reports.userBanned"), "success");
       } else if (type === "suspend-vehicle") {
         await apiFetch(`/api/admin/reports/${reportId}/suspend-vehicle`, { method: "PATCH" });
-        setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "RESOLVED" } : r));
+        await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
         showToast(t("admin.reports.vehicleSuspended"), "success");
       }
     } catch {
@@ -43,9 +58,19 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
     }
   };
 
+  if (loading) {
+    return (
+      <section className="mt-6">
+        <p className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+          {t("common.loading")}
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-6">
-      <h2 className="text-lg font-black">📋 {t("admin.dashboard.reportsTitle", { count: reports.length })}</h2>
+      <h2 className="text-lg font-black">📋 {t("admin.dashboard.reportsTitle", { count: pagination?.total ?? reports.length })}</h2>
       <div className="mt-4 space-y-3">
         {reports.map((report) => (
           <article key={report.id} onClick={() => setSelectedReport(report)} className="cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
@@ -74,7 +99,7 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
                         method: "PATCH",
                         body: JSON.stringify({ status: "RESOLVED" }),
                       });
-                      setReports((prev) => prev.map((r) => r.id === report.id ? { ...r, status: "RESOLVED" } : r));
+                      await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
                       showToast(t("admin.reports.resolved"), "success");
                     } catch {
                       showToast(t("admin.reports.resolveError"), "error");
@@ -91,7 +116,7 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
                         method: "PATCH",
                         body: JSON.stringify({ status: "DISMISSED" }),
                       });
-                      setReports((prev) => prev.map((r) => r.id === report.id ? { ...r, status: "DISMISSED" } : r));
+                      await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
                       showToast(t("admin.reports.dismissed"), "success");
                     } catch {
                       showToast(t("admin.reports.dismissError"), "error");
@@ -128,6 +153,31 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
         )}
       </div>
 
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Page {pagination.page}/{pagination.totalPages} · {pagination.total} signalement(s)
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
+            >
+              ← Précédent
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+              disabled={page >= pagination.totalPages}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300"
+            >
+              Suivant →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Modale détails du signalement */}
       {selectedReport && (
         <ReportDetailsModal
@@ -139,7 +189,7 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
                 method: "PATCH",
                 body: JSON.stringify({ status: "RESOLVED" }),
               });
-              setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "RESOLVED" } : r));
+              await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
               showToast(t("admin.reports.resolved"), "success");
             } catch {
               showToast(t("admin.reports.resolveError"), "error");
@@ -151,7 +201,7 @@ export function AdminReportsTab({ reports, setReports, showToast }: Props) {
                 method: "PATCH",
                 body: JSON.stringify({ status: "DISMISSED" }),
               });
-              setReports((prev) => prev.map((r) => r.id === reportId ? { ...r, status: "DISMISSED" } : r));
+              await queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
               showToast(t("admin.reports.dismissed"), "success");
             } catch {
               showToast(t("admin.reports.dismissError"), "error");

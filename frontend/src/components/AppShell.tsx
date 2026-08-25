@@ -1,12 +1,13 @@
 /**
  * AppShell — Layout principal avec :
- * - NAVBAR (haut) : Véhicules, Mes réservations, Messages
+ * - NAVBAR (haut) : Logo, Véhicules, Mes réservations, Messages, Profil, Notifications
  * - SIDEBAR (gauche) :
- *   - Desktop : fixe, toujours visible (largeur 256px)
+ *   - Desktop : fixe à gauche (pas de scroll, déconnexion toujours visible)
  *   - Mobile : toggleable via hamburger, overlay
+ * - Toggle sidebar : bouton chevron pour ouvrir/fermer à tout moment
  *
- * Sidebar contient : Favoris, Fidélité, Profil, Paramètres,
- *   Statistiques, Paiements, Aide, Déconnexion
+ * Sidebar contient : Favoris, Fidélité, Statistiques, Paiements, Aide,
+ *   Paramètres (avant déconnexion)
  */
 
 import { Link, useLocation } from "react-router-dom";
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
@@ -72,6 +74,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [userId]);
 
   const isActive = (path: string) => location.pathname === path;
+  const sidebarWidth = desktopSidebarCollapsed ? "w-0" : "w-64";
+  const sidebarTranslate = desktopSidebarCollapsed ? "-translate-x-full" : "translate-x-0";
 
   // ── Liens de la NAVBAR (haut) ──
   const navBarLinks = (
@@ -109,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           {t("nav.messages")}
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+            <span className="absolute -right-1 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white z-10">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -123,8 +127,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     ? [
         { to: "/favoris", label: t("nav.favorites"), icon: "❤️" },
         { to: "/fidelite", label: t("nav.loyalty", { defaultValue: "Fidélité" }), icon: "⭐" },
-        { to: "/profil", label: t("nav.profile", { defaultValue: "Profil" }), icon: "👤" },
-        { to: "/parametres", label: t("nav.settings", { defaultValue: "Paramètres" }), icon: "⚙️" },
         { to: "/statistiques", label: t("nav.stats", { defaultValue: "Statistiques" }), icon: "📊" },
         { to: "/paiements", label: t("nav.payments", { defaultValue: "Paiements" }), icon: "💰" },
         { to: "/aide", label: t("nav.help", { defaultValue: "Aide" }), icon: "❓" },
@@ -149,8 +151,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Liens */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      {/* Liens principaux */}
+      <nav className="flex-1 px-3 py-4">
         <div className="space-y-1">
           {sidebarLinks.map((link) => (
             <Link
@@ -169,8 +171,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      {/* Déconnexion */}
-      <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
+      {/* Paramètres + Déconnexion — toujours visibles en bas, pas de scroll */}
+      <div className="mt-auto border-t border-slate-200 px-3 py-3 dark:border-slate-800">
+        <Link
+          to="/parametres"
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+            isActive("/parametres")
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          }`}
+        >
+          <span className="text-base">⚙️</span>
+          {t("nav.settings", { defaultValue: "Paramètres" })}
+        </Link>
         <button
           onClick={() => setShowLogoutConfirm(true)}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700 dark:text-slate-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
@@ -187,14 +200,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ═══ NAVBAR ═══ */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3">
-          {/* Logo + bouton hamburger (mobile uniquement) */}
+          {/* Logo + bouton toggle sidebar */}
           <div className="flex items-center gap-2">
             {user && (
               <button
                 type="button"
-                onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
-                className="rounded-lg border border-slate-300 p-2 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 lg:hidden"
-                aria-label={mobileSidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
+                onClick={() => {
+                  // Mobile : toggle overlay
+                  setMobileSidebarOpen(!mobileSidebarOpen);
+                  // Desktop : toggle collapse
+                  setDesktopSidebarCollapsed(!desktopSidebarCollapsed);
+                }}
+                className="rounded-lg border border-slate-300 p-2 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+                aria-label={desktopSidebarCollapsed ? "Ouvrir le menu" : "Fermer le menu"}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 dark:text-slate-300">
                   {mobileSidebarOpen ? (
@@ -222,25 +240,46 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {navBarLinks}
           </nav>
 
-          {/* Contrôles droite */}
+          {/* Contrôles droite : Langue → Theme → Notifications → Profil → Role badge */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <LanguageSwitcher />
             <ThemeToggle />
 
-            {user ? (
+            {/* Notifications juste après theme toggle */}
+            {user && (
+              <Link
+                to="/notifications"
+                className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                title={t("nav.notifications")}
+              >
+                🔔
+              </Link>
+            )}
+
+            {/* Profil link + role badge */}
+            {user && (
               <>
+                <Link
+                  to="/profil"
+                  className={`hidden items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold transition lg:flex ${
+                    isActive("/profil")
+                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                  }`}
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    {user.firstName?.[0]}{user.lastName?.[0]}
+                  </span>
+                  <span className="max-w-[120px] truncate">{user.firstName}</span>
+                </Link>
                 <span className="hidden rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 lg:inline-block dark:bg-emerald-500/15 dark:text-emerald-300">
                   {roleLabel(user.role)}
                 </span>
-                <Link
-                  to="/notifications"
-                  className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-                  title={t("nav.notifications")}
-                >
-                  🔔
-                </Link>
               </>
-            ) : (
+            )}
+
+            {/* Connexion (si non connecté) */}
+            {!user && (
               <Link
                 to="/connexion"
                 className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 sm:px-4 sm:py-2 sm:text-sm"
@@ -263,10 +302,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* ═══ SIDEBAR MOBILE (overlay) ═══ */}
         {mobileSidebarOpen && user && (
           <>
-            {/* Overlay — mobile uniquement */}
+            {/* Overlay */}
             <div className="fixed inset-0 z-40 bg-black/30 lg:hidden" onClick={() => setMobileSidebarOpen(false)} />
 
-            {/* Panneau sidebar mobile */}
+            {/* Panneau sidebar mobile — fixe, pas de scroll global */}
             <aside
               ref={sidebarRef}
               className="fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-slate-200 bg-white pt-16 shadow-xl transition-transform dark:border-slate-800 dark:bg-slate-900 lg:hidden"
@@ -276,15 +315,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </>
         )}
 
-        {/* ═══ SIDEBAR DESKTOP (fixe) ═══ */}
+        {/* ═══ SIDEBAR DESKTOP (fixe, sans scroll global) ═══ */}
         {user && (
-          <aside className="sticky top-0 hidden h-screen w-64 flex-shrink-0 overflow-y-auto border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex lg:flex-col">
-            {sidebarContent}
+          <aside
+            className={`hidden border-r border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-900 lg:flex lg:flex-col lg:fixed lg:top-16 lg:bottom-0 lg:left-0 ${
+              desktopSidebarCollapsed ? "lg:w-0 lg:overflow-hidden lg:border-0" : "lg:w-64"
+            }`}
+          >
+            <div className={`${desktopSidebarCollapsed ? "hidden" : "flex"} h-full flex-col`}>
+              {sidebarContent}
+            </div>
           </aside>
         )}
 
         {/* ═══ CONTENU PRINCIPAL ═══ */}
-        <main className="flex-1">
+        <main className={`flex-1 transition-all duration-300 ${user && !desktopSidebarCollapsed ? "lg:ml-64" : ""}`}>
           {children}
         </main>
       </div>

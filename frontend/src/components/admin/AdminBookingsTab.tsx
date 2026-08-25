@@ -20,7 +20,7 @@ type Props = {
 };
 
 const BOOKING_FILTERS = ["", "EN_ATTENTE", "CONFIRMEE", "EN_COURS", "TERMINEE", "ANNULEE", "REJETEE"];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export function AdminBookingsTab({ initialStatusFilter = "" }: Props) {
   const { t } = useTranslation();

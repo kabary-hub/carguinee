@@ -30,6 +30,8 @@ export function AdminModerationPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [requestsPage, setRequestsPage] = useState(1);
+  const [bannedPage, setBannedPage] = useState(1);
 
   // Modale confirmation bannir / débannir
   const [banDialogOpen, setBanDialogOpen] = useState(false);
@@ -45,9 +47,9 @@ export function AdminModerationPage() {
   const requestsQuery = useQuery({
     queryKey: ["admin", "reactivation-requests"],
     queryFn: () =>
-      apiFetch<ApiResponse<{ items: ReactivationRequest[]; pagination: { total: number } }>>(
-        "/api/admin/reactivation-requests?pageSize=50&status=PENDING",
-      ).then((d) => d.data.items),
+      apiFetch<ApiResponse<{ items: ReactivationRequest[]; pagination: { total: number; totalPages: number } }>>(
+        `/api/admin/reactivation-requests?pageSize=10&page=${requestsPage}&status=PENDING`,
+      ).then((d) => d.data),
   });
 
   const moderationQuery = useQuery({
@@ -61,7 +63,8 @@ export function AdminModerationPage() {
     },
   });
 
-  const requests = requestsQuery.data ?? [];
+  const requests = requestsQuery.data?.items ?? [];
+  const requestsPagination = requestsQuery.data?.pagination;
   const moderationUsers = moderationQuery.data ?? [];
   const loading = requestsQuery.isLoading || moderationQuery.isLoading;
   const error = (requestsQuery.error || moderationQuery.error) instanceof Error
@@ -204,6 +207,9 @@ export function AdminModerationPage() {
             {activeTab === "requests" && (
               <RequestsTab
                 requests={requests}
+                pagination={requestsPagination}
+                page={requestsPage}
+                setPage={setRequestsPage}
                 actionLoading={actionLoading}
                 formatDate={formatDate}
                 onSelect={(req) => { setSelectedItem(req); setDetailType("request"); }}
@@ -288,6 +294,9 @@ export function AdminModerationPage() {
 
 function RequestsTab({
   requests,
+  pagination,
+  page,
+  setPage,
   actionLoading,
   formatDate,
   onSelect,
@@ -296,6 +305,9 @@ function RequestsTab({
   t,
 }: {
   requests: ReactivationRequest[];
+  pagination?: { total: number; totalPages: number };
+  page: number;
+  setPage: (p: number) => void;
   actionLoading: boolean;
   formatDate: (d: string) => string;
   onSelect: (req: ReactivationRequest) => void;
@@ -360,6 +372,17 @@ function RequestsTab({
           </tbody>
         </table>
       </div>
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Page {page}/{pagination.totalPages} · {pagination.total} demande(s)
+          </p>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">← Précédent</button>
+            <button onClick={() => setPage(Math.min(pagination.totalPages, page + 1))} disabled={page >= pagination.totalPages} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">Suivant →</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

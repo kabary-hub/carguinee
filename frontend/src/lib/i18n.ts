@@ -19,11 +19,18 @@ i18n
       escapeValue: false,
     },
     detection: {
-      order: ["localStorage", "navigator"],
+      order: ["localStorage"],
       caches: ["localStorage"],
       key: "preferredLanguage",
     },
   });
+
+// Si aucune langue n'est sauvegardée, forcer le français par défaut
+const saved = localStorage.getItem("preferredLanguage");
+if (!saved) {
+  i18n.changeLanguage("fr");
+  localStorage.setItem("preferredLanguage", "fr");
+}
 
 // Mettre à jour la balise <html lang> à chaque changement de langue
 i18n.on("languageChanged", (lng) => {

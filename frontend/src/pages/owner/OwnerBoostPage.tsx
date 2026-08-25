@@ -151,8 +151,8 @@ export function OwnerBoostPage() {
   // ── Payer puis activer le boost ──
   const handlePayAndActivate = async () => {
     if (!payingPlan || !selectedVehicleId) return;
-    if (!payPhone || payPhone.length < 8) {
-      setPayError("Numéro de téléphone invalide");
+    if (!payPhone || !/^\d{9,13}$/.test(payPhone)) {
+      setPayError("Le numéro doit contenir entre 9 et 13 chiffres.");
       return;
     }
 
@@ -438,8 +438,13 @@ export function OwnerBoostPage() {
               <input
                 type="tel"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={13}
                 value={payPhone}
-                onChange={(e) => setPayPhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setPayPhone(val);
+                }}
                 placeholder="224XXXXXXXX"
                 autoFocus
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3.5 text-base outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500"

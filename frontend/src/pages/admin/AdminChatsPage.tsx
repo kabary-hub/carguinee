@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -60,20 +60,68 @@ function isSameDay(a: string, b: string): boolean {
   );
 }
 
+// ── Constantes pagination ─────────────────────────────────────────────────────
+
+const CONV_PAGE_SIZE = 10;
+
 // ── Page admin chats ──────────────────────────────────────────────────────────
 
 export function AdminChatsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
-  // ── Variable déclarée AVANT handlePrint pour éviter le TDZ ──
-  const selectedConv = selectedId ? conversations.find((c) => c.id === selectedId) : null;
+  // ── Tous les hooks en premier ──
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [localMessages, setLocalMessages] = useState<AdminMessage[]>([]);
+  const [convPage, setConvPage] = useState(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+  const prevSelectedIdRef = useRef(selectedId);
+
+  // Reset local messages quand on change de conversation
+  if (prevSelectedIdRef.current !== selectedId) {
+    prevSelectedIdRef.current = selectedId;
+    setLocalMessages([]);
+  }
+
+  // ── Conversations admin ──
+  const isAdmin = user?.role === "ADMIN";
+  const { data: conversations = [], isLoading: loading } = useQuery({
+    queryKey: ["admin", "conversations"],
+    queryFn: () =>
+      apiFetch<{ status: string; data: { items: AdminConversation[] } }>(
+        "/api/messages/admin/conversations",
+      ).then((res) => res.data.items),
+    enabled: isAdmin,
+  });
+
+  // ── Messages de la conversation sélectionnée ──
+  const { data: serverMessages = [], isLoading: loadingMessages } = useQuery({
+    queryKey: ["admin", "messages", selectedId],
+    queryFn: () =>
+      apiFetch<{
+        status: string;
+        data: { items: AdminMessage[] };
+      }>(`/api/messages/admin/conversations/${selectedId}/messages`).then(
+        (res) => res.data.items,
+      ),
+    enabled: !!selectedId,
+  });
+
+  // Messages locaux (après suppressions) + messages du serveur
+  const messages = useMemo(
+    () => (localMessages.length > 0 ? localMessages : serverMessages),
+    [localMessages, serverMessages],
+  );
+
+  // ── Variable dérivée APRÈS les hooks ──
+  const selectedConv = useMemo(
+    () => (selectedId ? conversations.find((c) => c.id === selectedId) ?? null : null),
+    [selectedId, conversations],
+  );
 
   // ── Impression ciblée de la conversation sélectionnée ──
   const handlePrint = useCallback(() => {
@@ -105,23 +153,23 @@ export function AdminChatsPage() {
       </head>
       <body>
         <h1>💬 Conversation</h1>
-        <h2>${selectedConv ? `${selectedConv.participant1.firstName} ${selectedConv.participant1.lastName} ↔ ${selectedConv.participant2.firstName} ${selectedConv.participant2.lastName}` : ''}</h2>
+        <h2>${selectedConv ? `${selectedConv.participant1.firstName} ${selectedConv.participant1.lastName} ↔ ${selectedConv.participant2.firstName} ${selectedConv.participant2.lastName}` : ""}</h2>
         ${messages.map((msg, idx) => {
           const isDeleted = msg.deletedAt !== null;
           const prevMsg = idx > 0 ? messages[idx - 1] : null;
           const showSep = !prevMsg || !isSameDay(prevMsg.sentAt, msg.sentAt);
-          const time = new Date(msg.sentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-          return `${showSep ? `<div class="separator">${formatDateSeparator(msg.sentAt)}</div>` : ''}
-          <div class="msg${isDeleted ? ' deleted' : ''}">
+          const time = new Date(msg.sentAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+          return `${showSep ? `<div class="separator">${formatDateSeparator(msg.sentAt)}</div>` : ""}
+          <div class="msg${isDeleted ? " deleted" : ""}">
             <div>
               <span class="sender">${msg.sender.firstName} ${msg.sender.lastName}</span>
-              ${isDeleted ? '<span class="deleted-badge">supprimé</span>' : ''}
+              ${isDeleted ? '<span class="deleted-badge">supprimé</span>' : ""}
             </div>
             <div class="content">${msg.content}</div>
-            <div class="time">${time}${msg.editedAt ? ' (modifié)' : ''}</div>
+            <div class="time">${time}${msg.editedAt ? " (modifié)" : ""}</div>
           </div>`;
-        }).join('')}
-        <div class="footer">Imprimé le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} — CarGuinée</div>
+        }).join("")}
+        <div class="footer">Imprimé le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })} — CarGuinée</div>
       </body>
       </html>
     `;
@@ -138,41 +186,6 @@ export function AdminChatsPage() {
       URL.revokeObjectURL(url);
     };
   }, [messages, selectedConv]);
-
-  // ── Conversations admin ──
-  const isAdmin = user?.role === "ADMIN";
-  const { data: conversations = [], isLoading: loading } = useQuery({
-    queryKey: ["admin", "conversations"],
-    queryFn: () =>
-      apiFetch<{ status: string; data: { items: AdminConversation[] } }>(
-        "/api/messages/admin/conversations",
-      ).then((res) => res.data.items),
-    enabled: isAdmin,
-  });
-
-  // ── Messages de la conversation sélectionnée ──
-  const { data: serverMessages = [], isLoading: loadingMessages } = useQuery({
-    queryKey: ["admin", "messages", selectedId],
-    queryFn: () =>
-      apiFetch<{
-        status: string;
-        data: { items: AdminMessage[] };
-      }>(`/api/messages/admin/conversations/${selectedId}/messages`).then(
-        (res) => res.data.items,
-      ),
-    enabled: !!selectedId,
-  });
-
-  // Messages locaux (après suppressions) + messages du serveur
-  const [localMessages, setLocalMessages] = useState<AdminMessage[]>([]);
-  const messages = localMessages.length > 0 ? localMessages : serverMessages;
-
-  // Reset les messages locaux quand on change de conversation
-  const prevSelectedIdRef = useRef(selectedId);
-  if (prevSelectedIdRef.current !== selectedId) {
-    prevSelectedIdRef.current = selectedId;
-    setLocalMessages([]);
-  }
 
   // Scroll automatique vers le bas
   const messagesEndRef2 = useRef<HTMLDivElement>(null);
@@ -197,7 +210,7 @@ export function AdminChatsPage() {
   if (!selectedId) {
     return (
       <AppShell>
-        <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-black">
               💬 {t("admin.dashboard.generalConversations")}
@@ -222,9 +235,12 @@ export function AdminChatsPage() {
             </p>
           )}
 
-          {conversations.length > 0 && (
+          {conversations.length > 0 && (() => {
+            const totalPages = Math.ceil(conversations.length / CONV_PAGE_SIZE);
+            const pagedConvs = conversations.slice((convPage - 1) * CONV_PAGE_SIZE, convPage * CONV_PAGE_SIZE);
+            return (
             <div className="mt-6 space-y-2">
-              {conversations.map((conv) => {
+              {pagedConvs.map((conv) => {
                 const lastMsg = conv.messages[0];
                 const p1 = conv.participant1;
                 const p2 = conv.participant2;
@@ -270,8 +286,21 @@ export function AdminChatsPage() {
                   </button>
                 );
               })}
+              {/* Pagination conversations */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Page {convPage}/{totalPages} · {conversations.length} conversation(s)
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setConvPage((p) => Math.max(1, p - 1))} disabled={convPage <= 1} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">← Précédent</button>
+                    <button onClick={() => setConvPage((p) => Math.min(totalPages, p + 1))} disabled={convPage >= totalPages} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">Suivant →</button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+            );
+          })()}
         </main>
       </AppShell>
     );
@@ -280,7 +309,7 @@ export function AdminChatsPage() {
   // ── Vue lecture seule d'une conversation ──
   return (
     <AppShell>
-      <main className="mx-auto flex h-[calc(100vh-200px)] max-w-3xl flex-col px-4 py-6 sm:px-6">
+      <main className="mx-auto flex h-[calc(100vh-200px)] max-w-4xl flex-col px-4 py-6 sm:px-6">
         {/* En-tête */}
         <div className="mb-4 border-b border-slate-200 pb-4 dark:border-slate-800">
           <button
@@ -345,7 +374,6 @@ export function AdminChatsPage() {
                         : "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
                     }`}
                   >
-                    {/* Nom de l'expéditeur + badge supprimé */}
                     <div className="flex items-center gap-2">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
                         {msg.sender.firstName} {msg.sender.lastName}
@@ -356,11 +384,9 @@ export function AdminChatsPage() {
                         </span>
                       )}
                     </div>
-                    {/* Contenu (toujours visible pour l'admin) */}
                     <p className="mt-0.5 text-sm whitespace-pre-wrap">
                       {msg.content}
                     </p>
-                    {/* Métadonnées + bouton supprimer */}
                     <div className="mt-1 flex items-center justify-between">
                       <p className="text-[10px] text-slate-400 dark:text-slate-500">
                         {new Date(msg.sentAt).toLocaleTimeString("fr-FR", {
@@ -387,10 +413,9 @@ export function AdminChatsPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Zone imprimable (cachée à l'écran) */}
         <div ref={printRef} className="hidden" />
 
-        {/* Actions admin : supprimer un message / imprimer */}
+        {/* Actions admin */}
         <div className="mt-4 flex items-center gap-2">
           <button
             onClick={handlePrint}
@@ -400,7 +425,6 @@ export function AdminChatsPage() {
           </button>
         </div>
 
-        {/* Pas de champ de saisie — lecture seule */}
         <div className="mt-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500">
           👁️ Lecture seule — Les administrateurs ne peuvent pas écrire dans les conversations dont ils ne sont pas membres.
         </div>

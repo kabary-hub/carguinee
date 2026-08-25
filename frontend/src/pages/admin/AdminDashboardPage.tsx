@@ -11,7 +11,7 @@ import { AdminValidationsTab } from "../../components/admin/AdminValidationsTab"
 import { AdminUsersTab } from "../../components/admin/AdminUsersTab";
 import { AdminBookingsTab } from "../../components/admin/AdminBookingsTab";
 import { AdminReportsTab } from "../../components/admin/AdminReportsTab";
-import type { AdminStats, OwnerRequest, PendingAction, ReportItem } from "../../components/admin/adminTypes";
+import type { AdminStats, OwnerRequest, PendingAction } from "../../components/admin/adminTypes";
 
 export function AdminDashboardPage() {
   const { t, i18n } = useTranslation();
@@ -21,7 +21,6 @@ export function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [pendingVehicles, setPendingVehicles] = useState<Vehicle[]>([]);
   const [requests, setRequests] = useState<OwnerRequest[]>([]);
-  const [reports, setReports] = useState<ReportItem[]>([]);
   const [activeTab, setActiveTab] = useState<"stats" | "users" | "bookings" | "reports">(
     (searchParams.get("tab") as "stats" | "users" | "bookings" | "reports") || "stats"
   );
@@ -59,11 +58,6 @@ export function AdminDashboardPage() {
 
   useEffect(() => { void load(); }, []);
 
-  useEffect(() => {
-    apiFetch<ApiResponse<{ items: ReportItem[] }>>("/api/admin/reports")
-      .then((data) => setReports(data.data.items))
-      .catch(() => {});
-  }, []);
 
   const runAction = async (action: PendingAction, reason?: string) => {
     try {
@@ -267,7 +261,7 @@ export function AdminDashboardPage() {
         )}
 
         {activeTab === "reports" && (
-          <AdminReportsTab reports={reports} setReports={setReports} showToast={showToast} />
+          <AdminReportsTab showToast={showToast} />
         )}
       </main>
 

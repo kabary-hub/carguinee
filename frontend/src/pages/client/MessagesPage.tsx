@@ -95,6 +95,8 @@ function ConversationList({ currentUserId }: { currentUserId: string }) {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [convPage, setConvPage] = useState(1);
+  const CONV_PAGE_SIZE = 10;
 
   useEffect(() => {
     apiFetch<{ status: string; data: Conversation[] }>(
@@ -136,9 +138,12 @@ function ConversationList({ currentUserId }: { currentUserId: string }) {
           </div>
         )}
 
-        {conversations.length > 0 && (
+        {conversations.length > 0 && (() => {
+          const totalPages = Math.ceil(conversations.length / CONV_PAGE_SIZE);
+          const paged = conversations.slice((convPage - 1) * CONV_PAGE_SIZE, convPage * CONV_PAGE_SIZE);
+          return (
           <div className="mt-6 space-y-2">
-            {conversations.map((conv) => {
+            {paged.map((conv) => {
               const other = getOtherParticipant(conv);
               const lastMsg = conv.messages[0];
               return (
@@ -180,8 +185,20 @@ function ConversationList({ currentUserId }: { currentUserId: string }) {
                 </Link>
               );
             })}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Page {convPage}/{totalPages} · {conversations.length} conversation(s)
+                </p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setConvPage((p) => Math.max(1, p - 1))} disabled={convPage <= 1} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">← Précédent</button>
+                  <button onClick={() => setConvPage((p) => Math.min(totalPages, p + 1))} disabled={convPage >= totalPages} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">Suivant →</button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
       </main>
     </AppShell>
   );

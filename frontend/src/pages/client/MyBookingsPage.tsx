@@ -30,6 +30,8 @@ export function MyBookingsPage() {
   const [rejectTarget, setRejectTarget] = useState<Booking | null>(null);
   const [startTarget, setStartTarget] = useState<Booking | null>(null);
   const [completeTarget, setCompleteTarget] = useState<Booking | null>(null);
+  const [bookingsPage, setBookingsPage] = useState(1);
+  const BOOKINGS_PAGE_SIZE = 10;
   const { showToast } = useToast();
 
   const statusFilter = searchParams.get("status") || "";
@@ -164,9 +166,13 @@ export function MyBookingsPage() {
               ))}
             </div>
           )}
-          {!loading && bookings
-            .filter((b) => !statusFilter || b.status === statusFilter)
-            .map((booking) => (
+          {!loading && (() => {
+            const filtered = bookings.filter((b) => !statusFilter || b.status === statusFilter);
+            const totalPages = Math.ceil(filtered.length / BOOKINGS_PAGE_SIZE);
+            const paged = filtered.slice((bookingsPage - 1) * BOOKINGS_PAGE_SIZE, bookingsPage * BOOKINGS_PAGE_SIZE);
+            return (
+            <>
+            {paged.map((booking) => (
             <article
               key={booking.id}
               onClick={() => setSelectedBooking(booking)}
@@ -266,6 +272,24 @@ export function MyBookingsPage() {
               </div>
             </article>
           ))}
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Page {bookingsPage}/{totalPages} · {filtered.length} réservation(s)
+                </p>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setBookingsPage((p) => Math.max(1, p - 1))} disabled={bookingsPage <= 1} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">← Précédent</button>
+                  <button onClick={() => setBookingsPage((p) => Math.min(totalPages, p + 1))} disabled={bookingsPage >= totalPages} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">Suivant →</button>
+                </div>
+              </div>
+            )}
+            {filtered.length === 0 && !loading && (
+              <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucune réservation avec ce filtre.</p>
+            )}
+            </>
+            );
+          })()}
 
           {bookings.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">

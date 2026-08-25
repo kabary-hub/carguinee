@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
@@ -320,17 +321,20 @@ export function StatsPage() {
                 label={t("stats.publishedVehicles", { defaultValue: "Véhicules publiés" })}
                 value={stats.summary.publishedVehicles}
                 sub={`${stats.summary.totalVehicles} ${t("stats.total", { defaultValue: "au total" })}`}
+                to="/proprietaire"
               />
               <StatCard
                 icon="📋"
                 label={t("stats.totalBookings", { defaultValue: "Réservations" })}
                 value={stats.summary.totalBookings}
                 sub={`${stats.summary.confirmedBookings} ${t("stats.confirmed", { defaultValue: "confirmées" })}`}
+                to="/reservations"
               />
               <StatCard
                 icon="💰"
                 label={t("stats.revenue", { defaultValue: "Revenus" })}
                 value={formatGNF(stats.summary.totalRevenue)}
+                to="/paiements"
               />
               <StatCard
                 icon="📈"
@@ -345,21 +349,25 @@ export function StatsPage() {
                 icon="📋"
                 label={t("stats.totalBookings", { defaultValue: "Réservations" })}
                 value={stats.summary.totalBookings}
+                to="/reservations"
               />
               <StatCard
                 icon="💰"
                 label={t("stats.totalSpent", { defaultValue: "Dépensé" })}
                 value={formatGNF(stats.summary.totalSpent)}
+                to="/paiements"
               />
               <StatCard
                 icon="❤️"
                 label={t("stats.favorites", { defaultValue: "Favoris" })}
                 value={stats.summary.favoriteCount}
+                to="/favoris"
               />
               <StatCard
                 icon="⭐"
                 label={t("stats.loyaltyPoints", { defaultValue: "Points fidélité" })}
                 value={stats.summary.loyaltyPoints}
+                to="/fidelite"
               />
             </>
           )}
@@ -485,7 +493,8 @@ export function StatsPage() {
                 </thead>
                 <tbody>
                   {stats.topVehicles.map((v, i) => (
-                    <tr key={v.vehicleId} className="border-b border-slate-100 dark:border-slate-800">
+                    <Link to={`/vehicules/${v.vehicleId}`} key={v.vehicleId} className="contents">
+                    <tr className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/50">
                       <td className="py-3 pr-4 font-bold text-emerald-600 dark:text-emerald-400">{i + 1}</td>
                       <td className="py-3 pr-4 font-semibold text-slate-900 dark:text-slate-100">
                         {v.vehicle?.brand} {v.vehicle?.model}
@@ -495,6 +504,7 @@ export function StatsPage() {
                         {formatGNF(v._sum.totalAmountGnf ?? 0)}
                       </td>
                     </tr>
+                    </Link>
                   ))}
                 </tbody>
               </table>
@@ -510,7 +520,8 @@ export function StatsPage() {
           {stats.recentBookings.length > 0 ? (
             <div className="space-y-3">
               {stats.recentBookings.map((b) => (
-                <div
+                <Link
+                  to="/reservations"
                   key={b.id}
                   className="flex items-center justify-between rounded-xl bg-slate-50 p-4 transition hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800"
                 >
@@ -543,7 +554,7 @@ export function StatsPage() {
                       {formatGNF(b.totalAmountGnf)}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
@@ -564,14 +575,27 @@ function StatCard({
   label,
   value,
   sub,
+  to,
 }: {
   icon: string;
   label: string;
   value: string | number;
   sub?: string;
+  to?: string;
 }) {
+  const cls = "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:p-5";
+  if (to) {
+    return (
+      <Link to={to} className={cls}>
+        <div className="text-2xl">{icon}</div>
+        <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="mt-1 text-xl font-black text-slate-900 dark:text-slate-100 sm:text-2xl">{value}</p>
+        {sub && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{sub}</p>}
+      </Link>
+    );
+  }
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+    <div className={cls}>
       <div className="text-2xl">{icon}</div>
       <p className="mt-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-1 text-xl font-black text-slate-900 dark:text-slate-100 sm:text-2xl">{value}</p>
