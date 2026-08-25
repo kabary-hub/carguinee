@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { VehicleMap } from "../../components/vehicle/VehicleMap";
+import { SkeletonBar } from "../../components/ui";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch, resolvePhotoUrl } from "../../lib/api";
 import { formatGnf, type ApiResponse, type Vehicle } from "../../lib/domain";
@@ -147,7 +148,24 @@ export function VehiclesPage() {
         </div>
 
         {loading && (
-          <p className="py-16 text-center text-slate-500 dark:text-slate-400">{t("vehicles.loadingVehicles")}</p>
+          <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                {/* Image skeleton */}
+                <div className="h-36 animate-pulse bg-gradient-to-br from-slate-200 to-slate-100 sm:h-52 dark:from-slate-800 dark:to-slate-700" />
+                {/* Contenu skeleton */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <SkeletonBar width="60%" height={16} />
+                    <SkeletonBar width={50} height={24} rounded="full" />
+                  </div>
+                  <SkeletonBar width="40%" height={12} className="mt-2" />
+                  <SkeletonBar width="35%" height={10} className="mt-1" />
+                  <SkeletonBar width="50%" height={14} className="mt-3" />
+                </div>
+              </div>
+            ))}
+          </section>
         )}
 
         {/* CORRIGÉ : error.message au lieu de error (objet Error) pour éviter le crash React */}
