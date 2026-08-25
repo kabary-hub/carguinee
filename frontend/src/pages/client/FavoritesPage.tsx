@@ -66,7 +66,7 @@ export function FavoritesPage() {
         >
           ← {t("common.back")}
         </button>
-        <h1 className="mt-2 text-3xl font-black">❤️ {t("favorites.title")}</h1>
+        <h1 className="mt-2 text-3xl font-black">{t("favorites.title")}</h1>
 
         {error && (
           <p className="mt-4 rounded-xl bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
@@ -108,7 +108,7 @@ export function FavoritesPage() {
                       />
                     ) : (
                       <div className="flex h-44 w-full items-center justify-center bg-slate-100 dark:bg-slate-800">
-                        <span className="text-4xl">🚗</span>
+                        <span className="text-sm font-bold text-white/60 uppercase">{t("vehicles.noPhoto", { defaultValue: "Pas de photo" })}</span>
                       </div>
                     )}
                   </Link>
@@ -137,7 +137,7 @@ export function FavoritesPage() {
                     className="absolute right-3 top-3 rounded-full bg-white/90 p-2 text-red-500 shadow transition hover:bg-red-50 hover:text-red-700 dark:bg-slate-900/90"
                     title={t("vehicles.details.removeFromFavorites")}
                   >
-                    ❤️
+                    ❤
                   </button>
                 </article>
               );

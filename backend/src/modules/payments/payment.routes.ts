@@ -40,7 +40,7 @@ paymentRouter.post("/", requireAuth, async (request, response) => {
     return;
   }
 
-  const userId = (request as any).user.id;
+  const userId = request.auth!.userId;
 
   try {
     // Vérifier que la réservation appartient à l'utilisateur
@@ -129,6 +129,82 @@ paymentRouter.get("/:id/status", requireAuth, async (request, response) => {
   }
 });
 
+// ── POST /api/payments/boost — Paiement pour un boost ─────────────────────
+
+const boostPaymentSchema = z.object({
+  vehicleId: z.string().uuid(),
+  level: z.enum(["BASIC", "PREMIUM", "VIP"]),
+  amount: z.number().positive(),
+  phone: z.string().min(8),
+});
+
+paymentRouter.post("/boost", requireAuth, async (request, response) => {
+  const parsed = boostPaymentSchema.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({
+      status: "error",
+      message: "Données invalides.",
+      details: parsed.error.flatten(),
+    });
+    return;
+  }
+
+  const userId = request.auth!.userId;
+  const { vehicleId, level, amount, phone } = parsed.data;
+
+  try {
+    // Vérifier que le véhicule appartient à l'utilisateur
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    if (!vehicle || vehicle.ownerId !== userId) {
+      response.status(403).json({ status: "error", message: "Véhicule non trouvé ou accès refusé." });
+      return;
+    }
+
+    // Vérifier que le montant correspond au plan
+    const { BOOST_PLANS } = await import("../boosting/boosting.service.js");
+    const plan = BOOST_PLANS.find((p) => p.level === level);
+    if (!plan || plan.priceGnf !== amount) {
+      response.status(400).json({ status: "error", message: "Montant incorrect pour ce plan." });
+      return;
+    }
+
+    // ── Mode simulation : pas de clés OM → paiement simulé ──
+    if (!env.OM_APP_KEY || !env.OM_APP_SECRET || !env.OM_MERCHANT_KEY) {
+      logger.info({ userId, vehicleId, level }, "Mode simulation — paiement boost simulé");
+
+      // Créer un paiement simulé directement en statut PAID
+      const payment = await prisma.payment.create({
+        data: {
+          bookingId: "00000000-0000-0000-0000-000000000000", // Pas de booking pour un boost
+          userId,
+          amount,
+          provider: "ORANGE_MONEY",
+          phone,
+          status: "PAID",
+          paidAt: new Date(),
+          providerTxId: `SIM-BOOST-${vehicleId.slice(0, 8)}-${Date.now()}`,
+          metadata: { type: "BOOST", level, vehicleId, simulated: true },
+        },
+      });
+
+      response.json({
+        status: "ok",
+        data: { pay_token: payment.id, payment_url: "/proprietaire/boost" },
+      });
+      return;
+    }
+
+    // ── Mode réel : appeler l'API Orange Money ──
+    // TODO: Implémenter le flow réel avec Orange Money pour les boosts
+    response.status(501).json({
+      status: "error",
+      message: "Le paiement réel pour les boosts n'est pas encore disponible.",
+    });
+  } catch (error) {
+    handleRouteError(error, response, "Impossible d'initier le paiement du boost.", 500);
+  }
+});
+
 // ── POST /api/payments/callback — Webhook Orange Money ────────────────────
 // Pas d'auth — c'est un webhook externe
 paymentRouter.post("/callback", async (request, response) => {
@@ -145,7 +221,7 @@ paymentRouter.post("/callback", async (request, response) => {
 // ── GET /api/payments/history — Historique utilisateur ────────────────────
 
 paymentRouter.get("/history", requireAuth, async (request, response) => {
-  const userId = (request as any).user.id;
+  const userId = request.auth!.userId;
   const page = Number(request.query.page) || 1;
   const pageSize = Math.min(Number(request.query.pageSize) || 20, 50);
 

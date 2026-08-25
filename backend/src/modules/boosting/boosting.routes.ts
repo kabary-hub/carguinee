@@ -46,7 +46,7 @@ boostingRouter.post("/activate", requireAuth, async (request, response) => {
   }
 
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     const boost = await activateBoost({ ...parsed.data, userId });
     response.json({ status: "ok", data: boost });
   } catch (error) {
@@ -67,7 +67,7 @@ boostingRouter.get("/vehicle/:id", async (request, response) => {
 // ── GET /api/boosting/my-boosts — Boosts du propriétaire ────────────────
 boostingRouter.get("/my-boosts", requireAuth, async (request, response) => {
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     const boosts = await getOwnerBoosts(userId);
     response.json({ status: "ok", data: boosts });
   } catch (error) {
@@ -78,7 +78,7 @@ boostingRouter.get("/my-boosts", requireAuth, async (request, response) => {
 // ── POST /api/boosting/cancel/:id — Annuler un boost ────────────────────
 boostingRouter.post("/cancel/:id", requireAuth, async (request, response) => {
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     await cancelBoost(String(request.params.id), userId);
     response.json({ status: "ok", message: "Boost annulé." });
   } catch (error) {

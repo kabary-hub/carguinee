@@ -54,7 +54,7 @@ export function VehicleDocumentsSection({ vehicle, conditionReport }: Props) {
     <div className="space-y-6">
       {/* Documents et Conformité */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-lg font-black">📄 {t("vehicles.details.documentsTitle")}</h2>
+        <h2 className="text-lg font-black">{t("vehicles.details.documentsTitle")}</h2>
         <div className="mt-4 space-y-3">
           <DocumentRow
             label={t("vehicles.details.carteGrise")}
@@ -93,7 +93,7 @@ export function VehicleDocumentsSection({ vehicle, conditionReport }: Props) {
       {/* Rapport d'état du véhicule */}
       {conditionReport && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="text-lg font-black">🔍 {t("vehicles.details.conditionReport")}</h2>
+          <h2 className="text-lg font-black">{t("vehicles.details.conditionReport")}</h2>
           {conditionReport.overallRating && (
             <div className="mt-3">
               <RatingStars rating={conditionReport.overallRating} size="md" />

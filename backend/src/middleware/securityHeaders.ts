@@ -99,9 +99,8 @@ export function securityHeaders(request: Request, response: Response, next: Next
  * Stocke le nonce dans res.locals pour un accès ultérieur (templates, logs).
  */
 function res_locals_nonce(response: Response, nonce: string) {
-  // Express 5: res.locals existe toujours
-  (response as any).locals = (response as any).locals || {};
-  (response as any).locals.nonce = nonce;
+  response.locals = response.locals || {};
+  response.locals.nonce = nonce;
 }
 
 /**

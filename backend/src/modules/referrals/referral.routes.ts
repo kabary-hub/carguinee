@@ -24,7 +24,7 @@ export const referralRouter = Router();
 // ── POST /api/referrals/generate — Générer un code ──────────────────────
 referralRouter.post("/generate", requireAuth, async (request, response) => {
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     const code = await generateReferralCode(userId);
     response.json({ status: "ok", data: { code } });
   } catch (error) {
@@ -35,7 +35,7 @@ referralRouter.post("/generate", requireAuth, async (request, response) => {
 // ── GET /api/referrals/stats — Statistiques ──────────────────────────────
 referralRouter.get("/stats", requireAuth, async (request, response) => {
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     const stats = await getReferralStats(userId);
     response.json({ status: "ok", data: stats });
   } catch (error) {
@@ -46,7 +46,7 @@ referralRouter.get("/stats", requireAuth, async (request, response) => {
 // ── GET /api/referrals/history — Historique des points ───────────────────
 referralRouter.get("/history", requireAuth, async (request, response) => {
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     const page = Number(request.query.page) || 1;
     const pageSize = Math.min(Number(request.query.pageSize) || 20, 50);
     const result = await getLoyaltyHistory(userId, page, pageSize);
@@ -69,7 +69,7 @@ referralRouter.post("/discount", requireAuth, async (request, response) => {
   }
 
   try {
-    const userId = (request as any).user.id;
+    const userId = request.auth!.userId;
     const discount = await calculateDiscount(userId);
     const discountAmount = Math.floor((parsed.data.bookingAmount * discount.discountPercent) / 100);
 

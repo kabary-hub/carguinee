@@ -1,5 +1,5 @@
 /**
- * ChatbotWidget — Widget de chatbot FAQ flottant.
+ * ChatbotWidget — Widget de chatbot FAQ flottant avec dark mode.
  *
  * Affiche un bouton flottant en bas à droite.
  * Ouvre un panneau de chat avec recherche dans les FAQs.
@@ -7,7 +7,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../../lib/api";
 
 interface ChatMessage {
@@ -27,7 +27,6 @@ interface ChatResponse {
 
 export function ChatbotWidget() {
   const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -120,7 +119,7 @@ export function ChatbotWidget() {
       {/* Bouton flottant */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center text-2xl transition-all hover:scale-110"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-2xl text-white shadow-lg transition-all hover:scale-110 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
         aria-label={t("chatbot.open", "Ouvrir le chatbot")}
       >
         {isOpen ? "✕" : "💬"}
@@ -128,10 +127,10 @@ export function ChatbotWidget() {
 
       {/* Panneau de chat */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] h-[500px] max-h-[calc(100vh-8rem)] bg-white rounded-2xl shadow-2xl flex flex-col border overflow-hidden">
+        <div className="fixed bottom-24 right-6 z-50 flex h-[500px] w-96 max-h-[calc(100vh-8rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
           {/* Header */}
-          <div className="bg-blue-600 text-white p-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl">
+          <div className="flex items-center gap-3 bg-blue-600 p-4 text-white dark:bg-blue-700">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-xl">
               🤖
             </div>
             <div>
@@ -143,10 +142,10 @@ export function ChatbotWidget() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && (
-              <div className="text-center text-gray-500 py-8">
-                <p className="text-3xl mb-2">👋</p>
+              <div className="py-8 text-center text-slate-500 dark:text-slate-400">
+                <p className="mb-2 text-3xl">👋</p>
                 <p className="font-medium">{t("chatbot.welcome", "Bonjour ! Comment puis-je vous aider ?")}</p>
-                <p className="text-sm mt-1">{t("chatbot.welcomeSub", "Posez-moi vos questions sur Carguinee.")}</p>
+                <p className="mt-1 text-sm">{t("chatbot.welcomeSub", "Posez-moi vos questions sur Carguinee.")}</p>
               </div>
             )}
 
@@ -158,22 +157,22 @@ export function ChatbotWidget() {
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                     msg.role === "user"
-                      ? "bg-blue-600 text-white rounded-br-sm"
-                      : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                      ? "rounded-br-sm bg-blue-600 text-white dark:bg-blue-500"
+                      : "rounded-bl-sm bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                 </div>
               </div>
             ))}
 
             {sendMutation.isPending && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl px-4 py-2 rounded-bl-sm">
+                <div className="rounded-2xl rounded-bl-sm bg-slate-100 px-4 py-2 dark:bg-slate-800">
                   <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 [animation-delay:0.1s]" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 dark:bg-slate-500 [animation-delay:0.2s]" />
                   </div>
                 </div>
               </div>
@@ -184,13 +183,13 @@ export function ChatbotWidget() {
 
           {/* Rating */}
           {lastAssistantMsg?.faqEntryId && (
-            <div className="px-4 py-2 border-t bg-gray-50 flex items-center gap-2 text-sm">
-              <span className="text-gray-500">{t("chatbot.helpful", "Utile ?")}</span>
+            <div className="flex items-center gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
+              <span className="text-slate-500 dark:text-slate-400">{t("chatbot.helpful", "Utile ?")}</span>
               <button
                 onClick={() =>
                   rateMutation.mutate({ faqEntryId: lastAssistantMsg.faqEntryId!, helpful: true })
                 }
-                className="hover:bg-green-100 rounded px-2 py-1"
+                className="rounded px-2 py-1 transition hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
               >
                 👍
               </button>
@@ -198,7 +197,7 @@ export function ChatbotWidget() {
                 onClick={() =>
                   rateMutation.mutate({ faqEntryId: lastAssistantMsg.faqEntryId!, helpful: false })
                 }
-                className="hover:bg-red-100 rounded px-2 py-1"
+                className="rounded px-2 py-1 transition hover:bg-rose-100 dark:hover:bg-rose-500/20"
               >
                 👎
               </button>
@@ -206,7 +205,7 @@ export function ChatbotWidget() {
           )}
 
           {/* Input */}
-          <div className="border-t p-3">
+          <div className="border-t border-slate-200 p-3 dark:border-slate-700">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -214,12 +213,12 @@ export function ChatbotWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
                 placeholder={t("chatbot.placeholder", "Tapez votre question...")}
-                className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:ring-blue-400"
               />
               <button
                 onClick={handleSend}
                 disabled={!input.trim() || sendMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center disabled:opacity-50"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 ➤
               </button>

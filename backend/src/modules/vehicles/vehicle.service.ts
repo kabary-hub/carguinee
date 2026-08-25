@@ -1,10 +1,56 @@
 import type { AuthRole } from "../../types/express.js";
 import { prisma } from "../../lib/prisma.js";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import type {
   CreateVehicleInput,
   UpdateVehicleInput,
   VehicleListQuery,
 } from "./vehicle.schemas.js";
+
+/**
+ * Coordonnées GPS précises de chaque quartier de Conakry.
+ * Sources : OpenStreetMap Nominatim + Wikipedia.
+ * Structure : { KALOUM: { "Boulbinet": { lat, lon }, ... }, ... }
+ */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const quartiersCoords: Record<string, Record<string, { lat: number; lon: number }>> =
+  JSON.parse(readFileSync(join(__dirname, "../../../data/quartiers-coordinates.json"), "utf-8"));
+
+/**
+ * Coordonnées GPS par commune (fallback si le quartier n'est pas trouvé).
+ */
+const COMMUNE_COORDINATES: Record<string, { latitude: number; longitude: number }> = {
+  KALOUM:  { latitude: 9.50917,  longitude: -13.71222 },
+  DIXINN:  { latitude: 9.5511,   longitude: -13.6731 },
+  MATAM:   { latitude: 9.5667,   longitude: -13.6333 },
+  MATOTO:  { latitude: 9.57694,  longitude: -13.61194 },
+  RATOMA:  { latitude: 9.583,    longitude: -13.650 },
+};
+
+/**
+ * Renvoie les coordonnées GPS d'un quartier dans une commune.
+ * Cherche d'abord par nom de quartier (match partiel), puis fallback commune.
+ */
+function getLocationCoordinates(commune: string, quartier?: string) {
+  const communeQuartiers = quartiersCoords[commune];
+  if (communeQuartiers && quartier) {
+    // Match exact d'abord
+    const exact = communeQuartiers[quartier];
+    if (exact) return { latitude: exact.lat, longitude: exact.lon };
+    // Match partiel (le nom du quartier contient une clé ou vice versa)
+    const qLower = quartier.toLowerCase();
+    for (const [key, coords] of Object.entries(communeQuartiers)) {
+      if (qLower.includes(key.toLowerCase()) || key.toLowerCase().includes(qLower)) {
+        return { latitude: coords.lat, longitude: coords.lon };
+      }
+    }
+  }
+  // Fallback : centre de la commune
+  return COMMUNE_COORDINATES[commune] || null;
+}
 
 const vehicleInclude = {
   photos: {
@@ -34,11 +80,14 @@ const vehicleInclude = {
 
 export async function createVehicle(ownerId: string, input: CreateVehicleInput) {
   const { visiteTechniqueValideJusquA, assuranceValideJusquA, ...rest } = input;
+  const locationCoords = getLocationCoordinates(input.commune, input.quartier);
   return prisma.vehicle.create({
     data: {
       ...rest,
       ownerId,
       publicationStatus: "BROUILLON",
+      // Assignation automatique des coordonnées GPS basée sur la commune et le quartier
+      ...(locationCoords && !rest.latitude && !rest.longitude ? locationCoords : {}),
       ...(visiteTechniqueValideJusquA ? { visiteTechniqueValideJusquA: new Date(visiteTechniqueValideJusquA) } : {}),
       ...(assuranceValideJusquA ? { assuranceValideJusquA: new Date(assuranceValideJusquA) } : {}),
     },
@@ -258,10 +307,20 @@ export async function updateVehicle(
 
   const { visiteTechniqueValideJusquA, assuranceValideJusquA, ...rest } = input;
 
+  // Auto-assigner les coordonnées GPS si la commune/quartier change et qu'aucune coordonnée n'est fournie
+  let coordsUpdate = {};
+  if ((rest.commune || rest.quartier) && !rest.latitude && !rest.longitude) {
+    const commune = rest.commune || currentVehicle.commune;
+    const quartier = rest.quartier || currentVehicle.quartier;
+    const locationCoords = getLocationCoordinates(commune, quartier);
+    if (locationCoords) coordsUpdate = locationCoords;
+  }
+
   return prisma.vehicle.update({
     where: { id: vehicleId },
     data: {
       ...rest,
+      ...coordsUpdate,
       ...(visiteTechniqueValideJusquA !== undefined
         ? { visiteTechniqueValideJusquA: visiteTechniqueValideJusquA ? new Date(visiteTechniqueValideJusquA) : null }
         : {}),

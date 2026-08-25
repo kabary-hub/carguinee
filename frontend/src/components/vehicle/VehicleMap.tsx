@@ -1,11 +1,11 @@
 /**
- * VehicleMap — Carte Mapbox affichant les véhicules.
+ * VehicleMap — Carte Leaflet/OpenStreetMap affichant les véhicules.
  *
- * Utilise Mapbox GL JS (free tier : 50k req/mois).
- * Affiche les véhicules avec clustering et markers personnalisés.
+ * Solution 100% gratuite sans token API ni carte bancaire.
+ * Utilise OpenStreetMap tiles et Leaflet pour l'interaction.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface VehicleMarker {
   id: string;
@@ -16,207 +16,189 @@ interface VehicleMarker {
   longitude: number;
   photoUrl?: string;
   commune: string;
-  boostLevel?: string | null;
 }
 
 interface VehicleMapProps {
   vehicles: VehicleMarker[];
-  center?: [number, number]; // [lng, lat]
+  center?: [number, number]; // [lat, lng]
   zoom?: number;
   height?: string;
   onVehicleClick?: (vehicleId: string) => void;
-  showUserLocation?: boolean;
+}
+
+/**
+ * Convertit un prix GNF en format lisible
+ */
+function formatPrice(price: number | null): string {
+  if (!price) return "";
+  return price.toLocaleString("fr-FR") + " GNF";
+}
+
+function createVehiclePopup(v: VehicleMarker): string {
+  return `
+    <div style="min-width:180px;font-family:system-ui,sans-serif;">
+      ${v.photoUrl ? `<img src="${v.photoUrl}" alt="${v.brand} ${v.model}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;margin-bottom:8px;" />` : ""}
+      <strong style="font-size:14px;">${v.brand} ${v.model}</strong>
+      <p style="margin:4px 0;color:#666;font-size:12px;">${v.commune}</p>
+      ${v.dailyRentalPriceGnf ? `<p style="margin:4px 0;color:#059669;font-weight:bold;font-size:13px;">${formatPrice(v.dailyRentalPriceGnf)}/jour</p>` : ""}
+    </div>
+  `;
 }
 
 export function VehicleMap({
   vehicles,
-  center = [-13.6929, 9.6412], // Conakry par défaut
+  center = [9.6412, -13.6929], // Conakry, Guinée
   zoom = 12,
   height = "400px",
   onVehicleClick,
 }: VehicleMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<unknown>(null);
-  const [mapError, setMapError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<unknown>(null);
 
   useEffect(() => {
-    if (!mapContainer.current || !MAPBOX_TOKEN || mapRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Charger Mapbox dynamiquement
-    import("mapbox-gl").then((mapboxgl) => {
-      mapboxgl.default.accessToken = MAPBOX_TOKEN;
+    // Import dynamique de Leaflet côté client uniquement
+    Promise.all([import("leaflet"), import("leaflet/dist/leaflet.css")])
+      .then(([leaflet]) => {
+        const L = leaflet.default || leaflet;
 
-      const map = new mapboxgl.default.Map({
-        container: mapContainer.current!,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center,
-        zoom,
-      });
-
-      map.on("load", () => {
-        setIsLoaded(true);
-
-        // Ajouter la source de données avec clustering
-        map.addSource("vehicles", {
-          type: "geojson",
-          data: {
-            type: "FeatureCollection",
-            features: vehicles.map((v) => ({
-              type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [v.longitude, v.latitude],
-              },
-              properties: {
-                id: v.id,
-                brand: v.brand,
-                model: v.model,
-                price: v.dailyRentalPriceGnf,
-                commune: v.commune,
-                boostLevel: v.boostLevel,
-              },
-            })),
-          },
-          cluster: true,
-          clusterMaxZoom: 14,
-          clusterRadius: 50,
+        // Créer la carte
+        const map = L.map(mapRef.current!, {
+          center,
+          zoom,
+          scrollWheelZoom: false,
         });
 
-        // Cercles de cluster
-        map.addLayer({
-          id: "clusters",
-          type: "circle",
-          source: "vehicles",
-          filter: ["has", "point_count"],
-          paint: {
-            "circle-color": ["step", ["get", "point_count"], "#51bbd6", 10, "#f1f075", 30, "#f28cb1"],
-            "circle-radius": ["step", ["get", "point_count"], 20, 10, 30, 30, 40],
-          },
-        });
+        // Ajouter les tiles OpenStreetMap (gratuites)
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 19,
+        }).addTo(map);
 
-        // Compteur de cluster
-        map.addLayer({
-          id: "cluster-count",
-          type: "symbol",
-          source: "vehicles",
-          filter: ["has", "point_count"],
-          layout: {
-            "text-field": "{point_count_abbreviated}",
-            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-            "text-size": 12,
-          },
-        });
-
-        // Markers individuels
-        map.addLayer({
-          id: "unclustered-point",
-          type: "circle",
-          source: "vehicles",
-          filter: ["!", ["has", "point_count"]],
-          paint: {
-            "circle-color": [
-              "match",
-              ["get", "boostLevel"],
-              "VIP", "#8b5cf6",
-              "PREMIUM", "#f59e0b",
-              "#3b82f6",
-            ],
-            "circle-radius": 8,
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#fff",
-          },
-        });
-
-        // Popup au clic sur un marker
-        const popup = new mapboxgl.default.Popup({
-          closeButton: false,
-          closeOnClick: true,
-        });
-
-        map.on("click", "unclustered-point", (e: any) => {
-          const feature = e.features?.[0];
-          if (!feature) return;
-
-          const { brand, model, price, commune, id } = feature.properties;
-          const coordinates = (e as any).lngLat;
-
-          popup
-            .setLngLat(coordinates)
-            .setHTML(
-              `<div style="min-width:180px;padding:8px">
-                <strong>${brand} ${model}</strong>
-                <p style="margin:4px 0;color:#666;font-size:12px">📍 ${commune}</p>
-                ${price ? `<p style="margin:4px 0;color:#3b82f6;font-weight:bold">${price.toLocaleString()} GNF/jour</p>` : ""}
-                ${onVehicleClick ? `<button onclick="window.__vehicleClick('${id}')" style="margin-top:4px;padding:4px 12px;background:#3b82f6;color:white;border:none;border-radius:4px;cursor:pointer">Voir détails</button>` : ""}
-              </div>`
-            )
-            .addTo(map);
-        });
-
-        // Clic sur cluster → zoom
-        map.on("click", "clusters", (e: any) => {
-          const feature = e.features?.[0];
-          if (!feature) return;
-          const clusterId = feature.properties?.cluster_id;
-          const source = map.getSource("vehicles") as any;
-          source?.getClusterExpansionZoom(clusterId, (err: Error, zoom: number) => {
-            if (err) return;
-            map.easeTo({ center: (e as any).lngLat, zoom });
+        // Style du marker personnalisé
+        const createIcon = (color: string) =>
+          L.divIcon({
+            className: "custom-marker",
+            html: `<div style="
+              width: 28px; height: 28px;
+              background: ${color};
+              border: 3px solid white;
+              border-radius: 50%;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+              display: flex; align-items: center; justify-content: center;
+              font-size: 14px; color: white; font-weight: bold;
+            ">V</div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+            popupAnchor: [0, -16],
           });
+
+        const defaultIcon = createIcon("#3b82f6");
+
+        // Grouper les véhicules par coordonnées pour créer des clusters
+        const markers = L.featureGroup();
+        const grouped: Record<string, VehicleMarker[]> = {};
+
+        vehicles.forEach((v) => {
+          if (!v.latitude || !v.longitude) return;
+          const key = `${v.latitude},${v.longitude}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(v);
         });
 
-        mapRef.current = map;
-      });
+        Object.values(grouped).forEach((group) => {
+          const first = group[0];
+          const count = group.length;
 
-      map.on("error", () => setMapError(true));
-    }).catch(() => setMapError(true));
+          if (count === 1) {
+            // Un seul véhicule → marker simple
+            const marker = L.marker([first.latitude, first.longitude], { icon: defaultIcon });
+            marker.bindPopup(createVehiclePopup(first));
+            markers.addLayer(marker);
+          } else {
+            // Plusieurs véhicules → cluster avec badge compteur
+            const clusterIcon = L.divIcon({
+              className: "custom-cluster",
+              html: `<div style="
+                width: 42px; height: 42px;
+                background: linear-gradient(135deg, #059669, #10b981);
+                border: 3px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+                display: flex; align-items: center; justify-content: center;
+                font-size: 16px; color: white; font-weight: 900;
+                cursor: pointer;
+              ">${count}</div>`,
+              iconSize: [42, 42],
+              iconAnchor: [21, 21],
+              popupAnchor: [0, -24],
+            });
+
+            const marker = L.marker([first.latitude, first.longitude], { icon: clusterIcon });
+
+            // Popup listant tous les véhicules du cluster
+            const popupHtml = group
+              .map((v) => `
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee;font-family:system-ui,sans-serif;">
+                  <span style="font-size:20px;">V</span>
+                  <div style="flex:1;min-width:0;">
+                    <strong style="font-size:13px;">${v.brand} ${v.model}</strong>
+                    <p style="margin:2px 0;color:#666;font-size:11px;">${v.commune}</p>
+                    ${v.dailyRentalPriceGnf ? `<p style="margin:0;color:#059669;font-weight:bold;font-size:12px;">${formatPrice(v.dailyRentalPriceGnf)}/jour</p>` : ""}
+                  </div>
+                  ${onVehicleClick ? `<button onclick="window.__vehicleClick('${v.id}')" style="shrink:0;padding:4px 10px;background:#059669;color:white;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;">Voir</button>` : ""}
+                </div>
+              `)
+              .join("");
+
+            marker.bindPopup(`<div style="min-width:220px;max-height:300px;overflow-y:auto;"><p style="font-weight:900;font-size:14px;margin:0 0 6px 0;font-family:system-ui,sans-serif;">${count} véhicules ici</p>${popupHtml}</div>`);
+            markers.addLayer(marker);
+          }
+        });
+
+        markers.addTo(map);
+
+        // Centrer sur les markers s'il y en a
+        if (vehicles.length > 0) {
+          try {
+            map.fitBounds(markers.getBounds().pad(0.1));
+          } catch {
+            // Ignore si les bounds sont vides
+          }
+        }
+
+        mapInstanceRef.current = map;
+      })
+      .catch(() => {
+        // Erreur de chargement — silencieux
+      });
 
     return () => {
-      if (mapRef.current) {
-        (mapRef.current as any).remove();
-        mapRef.current = null;
+      if (mapInstanceRef.current) {
+        (mapInstanceRef.current as { remove: () => void }).remove();
+        mapInstanceRef.current = null;
       }
     };
-  }, [MAPBOX_TOKEN, vehicles, center, zoom, onVehicleClick]);
+  }, [vehicles, center, zoom, onVehicleClick]);
 
   // Expose la fonction de clic globalement
   useEffect(() => {
     if (onVehicleClick) {
-      (window as any).__vehicleClick = (id: string) => onVehicleClick(id);
+      (window as unknown as Record<string, unknown>).__vehicleClick = (id: string) =>
+        onVehicleClick(id);
     }
     return () => {
-      delete (window as any).__vehicleClick;
+      delete (window as unknown as Record<string, unknown>).__vehicleClick;
     };
   }, [onVehicleClick]);
 
-  if (!MAPBOX_TOKEN || mapError) {
-    return (
-      <div
-        style={{ height, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6", borderRadius: "8px" }}
-        className="text-gray-500"
-      >
-        <div className="text-center p-4">
-          <p className="text-lg mb-1">🗺️</p>
-          <p className="text-sm">Carte non disponible</p>
-          <p className="text-xs mt-1 text-gray-400">
-            {!MAPBOX_TOKEN ? "Token Mapbox non configuré" : "Erreur de chargement"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ height, borderRadius: "8px", overflow: "hidden" }} className="relative">
-      <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-          <p className="text-gray-500">Chargement de la carte...</p>
-        </div>
-      )}
+    <div
+      style={{ height, borderRadius: "12px", overflow: "hidden" }}
+      className="relative border border-slate-200 dark:border-slate-700"
+    >
+      <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
     </div>
   );
 }

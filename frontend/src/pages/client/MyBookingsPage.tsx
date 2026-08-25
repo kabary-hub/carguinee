@@ -9,6 +9,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch } from "../../lib/api";
+import { PaymentButton } from "../../components/payment/PaymentButton";
 import { formatDate, formatGnf, type ApiResponse, type Booking } from "../../lib/domain";
 import { getHomeRouteForRole } from "../../lib/roles";
 
@@ -21,7 +22,7 @@ export function MyBookingsPage() {
   const [error, setError] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
-  const [depositTarget, setDepositTarget] = useState<Booking | null>(null);
+
   const [reviewTarget, setReviewTarget] = useState<Booking | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<Booking | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Booking | null>(null);
@@ -55,6 +56,18 @@ export function MyBookingsPage() {
     }
   }, [bookings, setSearchParams]);
 
+  // ── Confirmation de paiement après redirection OM ──
+  const paymentStatus = searchParams.get("payment");
+  useEffect(() => {
+    if (paymentStatus === "success") {
+      showToast(t("bookings.paymentSuccess", { defaultValue: "Paiement confirmé ! Votre réservation a été validée." }), "success");
+      setSearchParams({}, { replace: true });
+    } else if (paymentStatus === "cancelled") {
+      showToast(t("bookings.paymentCancelled", { defaultValue: "Paiement annulé. Vous pouvez réessayer quand vous le souhaitez." }), "info");
+      setSearchParams({}, { replace: true });
+    }
+  }, [paymentStatus, showToast, setSearchParams, t]);
+
   const cancel = async () => {
     if (!cancelTarget) return;
     try {
@@ -84,17 +97,7 @@ export function MyBookingsPage() {
     }
   };
 
-  const markDepositPaid = async () => {
-    if (!depositTarget) return;
-    try {
-      await apiFetch(`/api/bookings/${depositTarget.id}/deposit`, { method: "PATCH" });
-      showToast(t("bookings.depositPaidSuccess"));
-      setDepositTarget(null);
-      await load();
-    } catch (reason) {
-      showToast(reason instanceof Error ? reason.message : t("bookings.depositPaidError"), "error");
-    }
-  };
+
 
   return (
     <AppShell>
@@ -176,13 +179,12 @@ export function MyBookingsPage() {
                   {/* ── Actions client ── */}
                   {booking.status === "EN_ATTENTE" && !isOwner && (
                     <>
-                      {booking.depositStatus === "A_PAYER" && (
-                        <button
-                          onClick={() => setDepositTarget(booking)}
-                          className="rounded-lg border border-amber-200 px-3 py-2 text-sm font-bold text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-300"
-                        >
-                          💰 {t("bookings.markDepositPaid")}
-                        </button>
+                      {!booking.payments?.some((p) => p.status === "PAID") && (
+                        <PaymentButton
+                          bookingId={booking.id}
+                          amount={booking.totalAmountGnf}
+                          onSuccess={() => void load()}
+                        />
                       )}
                       <button
                         onClick={() => setCancelTarget(booking)}
@@ -214,7 +216,7 @@ export function MyBookingsPage() {
                       onClick={() => setStartTarget(booking)}
                       className="rounded-lg bg-sky-600 px-3 py-2 text-sm font-bold text-white hover:bg-sky-700"
                     >
-                      🚗 {t("bookings.startRental")}
+                      {t("bookings.startRental")}
                     </button>
                   )}
                   {booking.status === "EN_COURS" && isOwner && (
@@ -222,7 +224,7 @@ export function MyBookingsPage() {
                       onClick={() => setCompleteTarget(booking)}
                       className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700"
                     >
-                      ✅ {t("bookings.completeRental")}
+                      {t("bookings.completeRental")}
                     </button>
                   )}
                   {booking.status === "TERMINEE" && (
@@ -230,7 +232,7 @@ export function MyBookingsPage() {
                       onClick={() => setReviewTarget(booking)}
                       className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300"
                     >
-                      ⭐ {t("reviews.leaveReview")}
+                      {t("reviews.leaveReview")}
                     </button>
                   )}
                 </div>
@@ -259,21 +261,6 @@ export function MyBookingsPage() {
           onClose={() => setSelectedBooking(null)}
         />
       )}
-
-      {/* Confirmation paiement dépôt */}
-      <ConfirmDialog
-        open={depositTarget !== null}
-        title={t("bookings.confirmDepositPaid")}
-        message={t("bookings.confirmDepositPaidMessage", {
-          amount: formatGnf(depositTarget?.depositAmountGnf),
-          brand: depositTarget?.vehicle.brand,
-          model: depositTarget?.vehicle.model,
-        })}
-        confirmLabel={t("bookings.markDepositPaid")}
-        tone="amber"
-        onConfirm={() => void markDepositPaid()}
-        onCancel={() => setDepositTarget(null)}
-      />
 
       {/* Confirmation annulation */}
       <ConfirmDialog

@@ -104,7 +104,7 @@ export function BookingDetailsModal({
               onClick={handlePrint}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              🖨️ {t("common.print", { defaultValue: "Imprimer" })}
+              {t("common.print", { defaultValue: "Imprimer" })}
             </button>
             <button
               type="button"
@@ -119,7 +119,7 @@ export function BookingDetailsModal({
 
         {/* ── Détails réservation ──────────────────────────────────── */}
         <SectionTitle>
-          📋 {t("bookings.details.dates", { defaultValue: "Réservation" })}
+          {t("bookings.details.dates", { defaultValue: "Réservation" })}
         </SectionTitle>
         <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Field
@@ -156,7 +156,7 @@ export function BookingDetailsModal({
         {customer && (
           <>
             <SectionTitle>
-              👤 {isFr ? "Client" : "Customer"}
+              {isFr ? "Client" : "Customer"}
             </SectionTitle>
             <div className="mt-3 grid grid-cols-2 gap-4">
               <Field
@@ -185,7 +185,7 @@ export function BookingDetailsModal({
         {owner && (
           <>
             <SectionTitle>
-              🏠 {isFr ? "Propriétaire" : "Owner"}
+              {isFr ? "Propriétaire" : "Owner"}
             </SectionTitle>
             <div className="mt-3 grid grid-cols-2 gap-4">
               <Field
@@ -207,13 +207,13 @@ export function BookingDetailsModal({
               {owner.averageRating != null && (
                 <Field
                   label={t("owner.dashboard.stats.rating", { defaultValue: "Note" })}
-                  value={`⭐ ${owner.averageRating.toFixed(1)}/5`}
+                  value={`${owner.averageRating.toFixed(1)}/5`}
                 />
               )}
               {owner.identityVerified != null && (
                 <Field
                   label={isFr ? "Identité vérifiée" : "Identity verified"}
-                  value={owner.identityVerified ? "✅" : "❌"}
+                  value={owner.identityVerified ? (isFr ? "Vérifié" : "Verified") : (isFr ? "Non vérifié" : "Not verified")}
                 />
               )}
             </div>
@@ -222,7 +222,7 @@ export function BookingDetailsModal({
 
         {/* ── Véhicule ─────────────────────────────────────────────── */}
         <SectionTitle>
-          🚗 {isFr ? "Véhicule" : "Vehicle"}
+          {isFr ? "Véhicule" : "Vehicle"}
         </SectionTitle>
         <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Field
@@ -348,7 +348,7 @@ export function BookingDetailsModal({
             onClick={handlePrint}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
           >
-            🖨️ {t("common.print", { defaultValue: "Imprimer" })}
+            {t("common.print", { defaultValue: "Imprimer" })}
           </button>
           <button
             type="button"

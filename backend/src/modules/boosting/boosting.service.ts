@@ -73,6 +73,24 @@ export async function activateBoost(params: {
   const plan = BOOST_PLANS.find((p) => p.level === level);
   if (!plan) throw new Error("Niveau de boost invalide");
 
+  // ── Vérifier le paiement pour les niveaux payants ──
+  if (plan.priceGnf > 0) {
+    if (!paymentId) {
+      throw new Error(`Ce plan (${plan.label}) nécessite un paiement de ${plan.priceGnf.toLocaleString("fr-FR")} GNF.`);
+    }
+    // Vérifier que le paiement existe et est confirmé
+    const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+    if (!payment || payment.userId !== userId) {
+      throw new Error("Paiement introuvable ou accès refusé.");
+    }
+    if (payment.status !== "PAID") {
+      throw new Error("Le paiement n'est pas encore confirmé.");
+    }
+    if (Number(payment.amount) < plan.priceGnf) {
+      throw new Error(`Montant insuffisant. Requis : ${plan.priceGnf.toLocaleString("fr-FR")} GNF.`);
+    }
+  }
+
   // Vérifier que le véhicule appartient à l'utilisateur
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
   if (!vehicle || vehicle.ownerId !== userId) {

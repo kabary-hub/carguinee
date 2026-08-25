@@ -86,7 +86,41 @@ export async function initiateOrangeMoneyPayment(params: {
 
   logger.info({ paymentId: payment.id, orderId, amount }, "Paiement Orange Money initié");
 
-  // Appeler l'API Orange Money
+  // ── Mode simulation : pas de clés API → paiement simulé ──────────────
+  if (!env.OM_APP_KEY || !env.OM_APP_SECRET || !env.OM_MERCHANT_KEY) {
+    logger.info({ paymentId: payment.id }, "Mode simulation activé (pas de clés OM)");
+
+    // Simuler un paiement réussi immédiatement
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "PAID",
+        paidAt: new Date(),
+        providerTxId: `SIM-${orderId}`,
+        metadata: { orderId, simulated: true },
+      },
+    });
+
+    // Confirmer la réservation
+    await prisma.rentalBooking.update({
+      where: { id: bookingId },
+      data: { status: "CONFIRMEE" },
+    });
+
+    // Créditer les points de fidélité
+    await creditLoyaltyPoints(userId, 10, "EARN_BOOKING", bookingId);
+
+    logger.info({ paymentId: payment.id, bookingId }, "Paiement simulé confirmé");
+
+    // Retourner une URL de succès (pas de redirection vers Orange)
+    const successUrl = return_url || "http://localhost:5173/reservations?payment=success";
+    return {
+      pay_token: `SIM-${orderId}`,
+      payment_url: successUrl,
+    };
+  }
+
+  // ── Mode réel : appeler l'API Orange Money ───────────────────────────
   const omRequest: OmPaymentRequest = {
     merchant_key: env.OM_MERCHANT_KEY ?? "",
     currency: "GNF",
@@ -201,8 +235,8 @@ export async function handleOrangeMoneyCallback(
     },
   });
 
-  // Si le paiement est confirmé, confirmer la réservation
-  if (mappedStatus === "PAID") {
+  // Si le paiement est confirmé, confirmer la réservation (si liée à un booking)
+  if (mappedStatus === "PAID" && payment.bookingId) {
     await prisma.rentalBooking.update({
       where: { id: payment.bookingId },
       data: { status: "CONFIRMEE" },
@@ -240,10 +274,13 @@ export async function refundPayment(paymentId: string): Promise<void> {
     data: { status: "REFUNDED", refundedAt: new Date() },
   });
 
-  await prisma.rentalBooking.update({
-    where: { id: payment.bookingId },
-    data: { status: "ANNULEE" },
-  });
+  // Annuler la réservation si le paiement y est lié
+  if (payment.bookingId) {
+    await prisma.rentalBooking.update({
+      where: { id: payment.bookingId },
+      data: { status: "ANNULEE" },
+    });
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────

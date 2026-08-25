@@ -12,9 +12,9 @@ describe("VehicleGallery", () => {
     { id: "3", url: "/demo-vehicles/3.jpg", sortOrder: 2 },
   ];
 
-  it("affiche un emoji quand il n'y a pas de photos", () => {
+  it("affiche un placeholder quand il n'y a pas de photos", () => {
     renderWithProviders(<VehicleGallery photos={emptyPhotos} brand="Toyota" model="Corolla" />);
-    expect(screen.getByText("🚗")).toBeInTheDocument();
+    expect(screen.getByText(/no photo/i)).toBeInTheDocument();
   });
 
   it("affiche une image", () => {

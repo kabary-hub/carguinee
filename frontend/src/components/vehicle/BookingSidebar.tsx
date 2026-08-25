@@ -23,7 +23,7 @@ export function BookingSidebar({ vehicle, user, isBooking, message, error, openB
       {vehicle.supportsRental && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-            🚗 {t("vehicles.details.rentalWithDriver")}
+            {t("vehicles.details.rentalWithDriver")}
           </p>
           <p className="mt-2 text-3xl font-black">
             {formatGnf(vehicle.dailyRentalPriceGnf)}
@@ -40,7 +40,7 @@ export function BookingSidebar({ vehicle, user, isBooking, message, error, openB
 
           {v.depositReturnPolicy && (
             <div className="mt-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">📋 {t("vehicles.details.depositPolicy")}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("vehicles.details.depositPolicy")}</p>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{String(v.depositReturnPolicy)}</p>
             </div>
           )}
@@ -56,7 +56,7 @@ export function BookingSidebar({ vehicle, user, isBooking, message, error, openB
       {vehicle.supportsSale && vehicle.salePriceGnf && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            💰 {t("vehicles.details.sale")}
+            {t("vehicles.details.sale")}
           </p>
           <p className="mt-2 text-3xl font-black">{formatGnf(vehicle.salePriceGnf)}</p>
         </div>
@@ -114,7 +114,7 @@ export function BookingSidebar({ vehicle, user, isBooking, message, error, openB
         <button onClick={() => setShowReportDialog(true)}
           className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-500 transition hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:hover:border-rose-800 dark:hover:text-rose-400"
         >
-          🚩 {t("vehicles.details.reportListing")}
+          {t("vehicles.details.reportListing")}
         </button>
       )}
     </aside>

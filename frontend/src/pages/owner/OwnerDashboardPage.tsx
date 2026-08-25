@@ -8,12 +8,32 @@ import { TranslateFieldButton } from "../../components/TranslateFieldButton";
 import { useToast } from "../../contexts/ToastContext";
 import { apiFetch, deleteVehiclePhoto, resolvePhotoUrl, uploadVehiclePhotos } from "../../lib/api";
 import { formatGnf, type ApiResponse, type Booking, type Vehicle } from "../../lib/domain";
+import { COMMUNES, getQuartiers } from "../../lib/communes-quartiers";
 
 const VEHICLE_TYPES = [
   "CITADINE", "BERLINE", "SUV", "QUATRE_QUATRE", "UTILITAIRE", "MINIBUS", "CAMION", "MOTO", "AUTRE",
 ];
 const VEHICLE_CONDITIONS = ["OCCASION", "NEUF"];
-const COMMUNES = ["KALOUM", "DIXINN", "MATAM", "RATOMA", "MATOTO"];
+// Les communes sont importées depuis ../../lib/communes-quartiers
+
+/** Composant commune/quartier dynamique réutilisable dans le dashboard */
+function CommuneQuartierSelect({ commune, quartier, secteur, inputClass }: { commune: string; quartier: string; secteur: string; inputClass: string }) {
+  const { t } = useTranslation();
+  const [selectedCommune, setSelectedCommune] = useState(commune);
+  const quartiers = getQuartiers(selectedCommune);
+  return (
+    <>
+      <select name="commune" value={selectedCommune} onChange={(e) => setSelectedCommune(e.target.value)} className={inputClass}>
+        {COMMUNES.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+      <select name="quartier" defaultValue={quartier} className={inputClass}>
+        <option value="">{t("owner.vehicleForm.quartier")}</option>
+        {quartiers.map((q) => <option key={q} value={q}>{q}</option>)}
+      </select>
+      <input required name="secteur" defaultValue={secteur} placeholder={t("owner.vehicleForm.secteur")} autoComplete="off" className={inputClass} />
+    </>
+  );
+}
 
 const MAX_PHOTOS = 8;
 const MAX_PHOTO_SIZE_BYTES = 2 * 1024 * 1024;
@@ -48,6 +68,34 @@ export function OwnerDashboardPage() {
   const vehiclesRef = useRef<HTMLDivElement>(null);
   const [showAllVehicles, setShowAllVehicles] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
+
+  // ── État du mode de commercialisation pour les formulaires ──
+  type VehicleMode = "LOCATION" | "VENTE" | "LOCATION_ET_VENTE";
+  const [createMode, setCreateMode] = useState<VehicleMode>("LOCATION");
+
+  // ── État commune / quartier dynamique pour le formulaire création ──
+  const [createCommune, setCreateCommune] = useState<string>(COMMUNES[0]);
+  const [editModes, setEditModes] = useState<Record<string, VehicleMode>>({});
+
+  /** Déterminer le mode à partir des booléens supportsRental/supportsSale */
+  const getModeFromVehicle = (v: Vehicle): VehicleMode =>
+    v.supportsRental && v.supportsSale ? "LOCATION_ET_VENTE"
+    : v.supportsRental ? "LOCATION"
+    : "VENTE";
+
+  /** Obtenir le mode d'édition d'un véhicule (avec fallback sur ses données) */
+  const getEditMode = (v: Vehicle): VehicleMode => editModes[v.id] ?? getModeFromVehicle(v);
+
+  /** Convertir un mode en booléens supportsRental / supportsSale */
+  const modeToSupports = (mode: VehicleMode) => ({
+    supportsRental: mode === "LOCATION" || mode === "LOCATION_ET_VENTE",
+    supportsSale: mode === "VENTE" || mode === "LOCATION_ET_VENTE",
+  });
+
+  /** Les champs location sont affichés si le mode inclut la location */
+  const showLocationFieldsForMode = (mode: VehicleMode) => mode === "LOCATION" || mode === "LOCATION_ET_VENTE";
+  /** Le champ vente est affiché si le mode inclut la vente */
+  const showSaleFieldsForMode = (mode: VehicleMode) => mode === "VENTE" || mode === "LOCATION_ET_VENTE";
   const { showToast } = useToast();
 
   const load = () =>
@@ -66,6 +114,7 @@ export function OwnerDashboardPage() {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     setError("");
+    const { supportsRental, supportsSale } = modeToSupports(createMode);
     try {
       await apiFetch("/api/vehicles", {
         method: "POST",
@@ -81,9 +130,11 @@ export function OwnerDashboardPage() {
           commune: data.get("commune"),
           quartier: data.get("quartier"),
           secteur: data.get("secteur"),
-          supportsRental: true,
-          dailyRentalPriceGnf: Number(data.get("price")),
-          rentalDepositGnf: data.get("deposit") ? Number(data.get("deposit")) : undefined,
+          supportsRental,
+          supportsSale,
+          dailyRentalPriceGnf: supportsRental && data.get("price") ? Number(data.get("price")) : undefined,
+          rentalDepositGnf: supportsRental && data.get("deposit") ? Number(data.get("deposit")) : undefined,
+          salePriceGnf: supportsSale && data.get("salePrice") ? Number(data.get("salePrice")) : undefined,
           descriptionFr: data.get("descriptionFr") || undefined,
           descriptionEn: data.get("descriptionEn") || undefined,
           carteGrisePresente: data.get("carteGrisePresente") === "on",
@@ -93,6 +144,7 @@ export function OwnerDashboardPage() {
       });
       showToast(t("owner.vehicleForm.draftCreated"));
       event.currentTarget.reset();
+      setCreateMode("LOCATION");
       await load();
     } catch (reason) {
       showToast(reason instanceof Error ? reason.message : t("owner.vehicleForm.creationImpossible"), "error");
@@ -106,6 +158,8 @@ export function OwnerDashboardPage() {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     setError("");
+    const mode = getEditMode(vehicle);
+    const { supportsRental, supportsSale } = modeToSupports(mode);
     try {
       await apiFetch(`/api/vehicles/${vehicle.id}`, {
         method: "PATCH",
@@ -121,8 +175,11 @@ export function OwnerDashboardPage() {
           commune: data.get("commune"),
           quartier: data.get("quartier"),
           secteur: data.get("secteur"),
-          dailyRentalPriceGnf: Number(data.get("price")),
-          rentalDepositGnf: data.get("deposit") ? Number(data.get("deposit")) : undefined,
+          supportsRental,
+          supportsSale,
+          dailyRentalPriceGnf: supportsRental && data.get("price") ? Number(data.get("price")) : undefined,
+          rentalDepositGnf: supportsRental && data.get("deposit") ? Number(data.get("deposit")) : undefined,
+          salePriceGnf: supportsSale && data.get("salePrice") ? Number(data.get("salePrice")) : undefined,
           descriptionFr: data.get("descriptionFr") || undefined,
           descriptionEn: data.get("descriptionEn") || undefined,
           carteGrisePresente: data.get("carteGrisePresente") === "on",
@@ -248,6 +305,7 @@ export function OwnerDashboardPage() {
         <section className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Link to="/proprietaire" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.dashboard.stats.vehicles")}</p>
+            {/* Emoji removed */}
             <p className="mt-2 text-3xl font-black">{vehicles.length}</p>
           </Link>
           <Link to="/proprietaire?vehicleStatus=EN_ATTENTE_VALIDATION" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -263,7 +321,7 @@ export function OwnerDashboardPage() {
             )}
           </Link>
           <Link to="/reservations" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">📈 {t("owner.dashboard.stats.revenue")}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.dashboard.stats.revenue")}</p>
             <p className="mt-2 text-lg font-black break-all text-emerald-600 sm:text-3xl dark:text-emerald-400">{formatGnf(confirmedTotalGnf)}</p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{confirmedBookings.length} {t("owner.dashboard.stats.confirmedLocations")}</p>
           </Link>
@@ -330,13 +388,21 @@ export function OwnerDashboardPage() {
           </div>
         </section>
 
-        {/* ── Bouton ajout mobile ── */}
-        <Link
-          to="/proprietaire/ajouter"
-          className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-4 text-base font-bold text-white shadow-sm transition hover:bg-emerald-700 sm:hidden"
-        >
-          ➕ {t("owner.dashboard.addVehicle")}
-        </Link>
+        {/* ── Boutons mobile (ajout + boost) ── */}
+        <div className="mt-8 flex gap-3 sm:hidden">
+          <Link
+            to="/proprietaire/ajouter"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-4 text-base font-bold text-white shadow-sm transition hover:bg-emerald-700"
+          >
+            {t("owner.dashboard.addVehicle")}
+          </Link>
+          <Link
+            to="/proprietaire/boost"
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-violet-600 px-4 py-4 text-base font-bold text-white shadow-sm transition hover:bg-violet-700"
+          >
+            {t("boost.navLink", { defaultValue: "Booster" })}
+          </Link>
+        </div>
 
         {/* ── Formulaire ajout desktop + Liste véhicules ── */}
         <section ref={vehiclesRef} className="mt-8 grid gap-6 overflow-hidden scroll-mt-6 lg:grid-cols-[0.8fr_1.2fr] sm:grid">
@@ -344,6 +410,12 @@ export function OwnerDashboardPage() {
           <form onSubmit={createVehicle} className="hidden h-fit overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:block sm:p-5 dark:border-slate-800 dark:bg-slate-900">
             <h2 className="text-lg font-black">{t("owner.dashboard.addVehicle")}</h2>
             <div className="mt-4 grid gap-3">
+              {/* Sélecteur mode commercialisation */}
+              <div className="grid grid-cols-3 gap-2">
+                <button type="button" onClick={() => setCreateMode("LOCATION")} className={`rounded-lg border-2 px-2 py-2 text-xs font-bold transition ${createMode === "LOCATION" ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"}`}>{t("owner.vehicleForm.modeRental", { defaultValue: "Location" })}</button>
+                <button type="button" onClick={() => setCreateMode("VENTE")} className={`rounded-lg border-2 px-2 py-2 text-xs font-bold transition ${createMode === "VENTE" ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"}`}>{t("owner.vehicleForm.modeSale", { defaultValue: "Vente" })}</button>
+                <button type="button" onClick={() => setCreateMode("LOCATION_ET_VENTE")} className={`rounded-lg border-2 px-2 py-2 text-xs font-bold transition ${createMode === "LOCATION_ET_VENTE" ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"}`}>{t("owner.vehicleForm.modeBoth", { defaultValue: "Les deux" })}</button>
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input required name="brand" placeholder={t("owner.vehicleForm.brand")} className={inputClass} />
                 <input required name="model" placeholder={t("owner.vehicleForm.model")} className={inputClass} />
@@ -353,7 +425,7 @@ export function OwnerDashboardPage() {
                   {VEHICLE_TYPES.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
                 </select>
                 <select name="condition" defaultValue="OCCASION" className={inputClass}>
-                  {VEHICLE_CONDITIONS.map((c) => <option key={c}>{c}</option>)}
+                  {VEHICLE_CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -361,13 +433,20 @@ export function OwnerDashboardPage() {
                 <input name="mileageKm" type="number" min="0" placeholder={t("owner.vehicleForm.mileage")} className={inputClass} />
                 <input name="seats" type="number" min="1" placeholder={t("owner.vehicleForm.seats")} className={inputClass} />
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <input required name="price" type="number" min="1" placeholder={t("owner.vehicleForm.dailyPrice")} className={inputClass} />
-                <input name="deposit" type="number" min="0" placeholder={t("owner.vehicleForm.deposit")} className={inputClass} />
-              </div>
+              {/* Champs location (tarif journalier + caution) */}
+              {showLocationFieldsForMode(createMode) && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <input required name="price" type="number" min="1" placeholder={t("owner.vehicleForm.dailyPrice")} className={inputClass} />
+                  <input name="deposit" type="number" min="0" placeholder={t("owner.vehicleForm.deposit")} className={inputClass} />
+                </div>
+              )}
+              {/* Champ vente (prix de vente) */}
+              {showSaleFieldsForMode(createMode) && (
+                <input required={createMode === "VENTE"} name="salePrice" type="number" min="1" placeholder={t("owner.vehicleForm.salePrice", { defaultValue: "Prix de vente (GNF)" })} className={inputClass} />
+              )}
               <input name="color" placeholder={t("owner.vehicleForm.color")} className={inputClass} />
               <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">📄 {t("owner.vehicleForm.documents")}</p>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.vehicleForm.documents")}</p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <label className="flex flex-col items-start gap-1">
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("owner.vehicleForm.carteGrisePresent")}</span>
@@ -383,11 +462,14 @@ export function OwnerDashboardPage() {
                   </label>
                 </div>
               </div>
-              <select name="commune" defaultValue="RATOMA" className={inputClass}>
-                {COMMUNES.map((c) => <option key={c}>{c}</option>)}
+              <select name="commune" value={createCommune} onChange={(e) => setCreateCommune(e.target.value)} className={inputClass}>
+                {COMMUNES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select name="quartier" className={inputClass}>
+                <option value="">{t("owner.vehicleForm.quartier")}</option>
+                {getQuartiers(createCommune).map((q) => <option key={q} value={q}>{q}</option>)}
               </select>
               <div className="grid grid-cols-2 gap-3">
-                <input required name="quartier" placeholder={t("owner.vehicleForm.quartier")} autoComplete="off" className={inputClass} />
                 <input required name="secteur" placeholder={t("owner.vehicleForm.secteur")} autoComplete="off" className={inputClass} />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -503,29 +585,46 @@ export function OwnerDashboardPage() {
                     </div>
 
                     {/* Formulaire édition */}
-                    {isEditing(vehicle.id) && (
+                    {isEditing(vehicle.id) && (() => {
+                      const editMode = getEditMode(vehicle);
+                      const showLoc = showLocationFieldsForMode(editMode);
+                      const showSale = showSaleFieldsForMode(editMode);
+                      return (
                       <form onSubmit={(e) => saveEdit(e, vehicle)} className="mt-5 grid gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{t("owner.vehicleForm.editMode", { brand: vehicle.brand, model: vehicle.model })}</p>
+                        {/* Sélecteur mode commercialisation */}
+                        <div className="grid grid-cols-3 gap-2">
+                                      <button type="button" onClick={() => setEditModes((m) => ({ ...m, [vehicle.id]: "LOCATION" }))} className={`rounded-lg border-2 px-2 py-2 text-xs font-bold transition ${editMode === "LOCATION" ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"}`}>{t("owner.vehicleForm.modeRental", { defaultValue: "Location" })}</button>
+                          <button type="button" onClick={() => setEditModes((m) => ({ ...m, [vehicle.id]: "VENTE" }))} className={`rounded-lg border-2 px-2 py-2 text-xs font-bold transition ${editMode === "VENTE" ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"}`}>{t("owner.vehicleForm.modeSale", { defaultValue: "Vente" })}</button>
+                          <button type="button" onClick={() => setEditModes((m) => ({ ...m, [vehicle.id]: "LOCATION_ET_VENTE" }))} className={`rounded-lg border-2 px-2 py-2 text-xs font-bold transition ${editMode === "LOCATION_ET_VENTE" ? "border-emerald-600 bg-emerald-50 text-emerald-700 dark:border-emerald-400 dark:bg-emerald-500/15 dark:text-emerald-300" : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400"}`}>{t("owner.vehicleForm.modeBoth", { defaultValue: "Les deux" })}</button>
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <input required name="brand" defaultValue={vehicle.brand} placeholder={t("owner.vehicleForm.brand")} className={inputClass} />
                           <input required name="model" defaultValue={vehicle.model} placeholder={t("owner.vehicleForm.model")} className={inputClass} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <select name="type" defaultValue={vehicle.type} className={inputClass}>{VEHICLE_TYPES.map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}</select>
-                          <select name="condition" defaultValue={vehicle.condition} className={inputClass}>{VEHICLE_CONDITIONS.map((c) => <option key={c}>{c}</option>)}</select>
+                          <select name="condition" defaultValue={vehicle.condition} className={inputClass}>{VEHICLE_CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</select>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                           <input name="year" type="number" min="1900" defaultValue={vehicle.year ?? ""} placeholder={t("owner.vehicleForm.year")} className={inputClass} />
                           <input name="mileageKm" type="number" min="0" defaultValue={vehicle.mileageKm ?? ""} placeholder={t("owner.vehicleForm.mileage")} className={inputClass} />
                           <input name="seats" type="number" min="1" defaultValue={vehicle.seats ?? ""} placeholder={t("owner.vehicleForm.seats")} className={inputClass} />
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input required name="price" type="number" min="1" defaultValue={vehicle.dailyRentalPriceGnf ?? ""} placeholder={t("owner.vehicleForm.dailyPrice")} className={inputClass} />
-                          <input name="deposit" type="number" min="0" defaultValue={vehicle.rentalDepositGnf ?? ""} placeholder={t("owner.vehicleForm.deposit")} className={inputClass} />
-                        </div>
+                        {/* Champs location (tarif journalier + caution) */}
+                        {showLoc && (
+                          <div className="grid grid-cols-2 gap-3">
+                            <input required name="price" type="number" min="1" defaultValue={vehicle.dailyRentalPriceGnf ?? ""} placeholder={t("owner.vehicleForm.dailyPrice")} className={inputClass} />
+                            <input name="deposit" type="number" min="0" defaultValue={vehicle.rentalDepositGnf ?? ""} placeholder={t("owner.vehicleForm.deposit")} className={inputClass} />
+                          </div>
+                        )}
+                        {/* Champ vente (prix de vente) */}
+                        {showSale && (
+                          <input required={editMode === "VENTE"} name="salePrice" type="number" min="1" defaultValue={vehicle.salePriceGnf ?? ""} placeholder={t("owner.vehicleForm.salePrice", { defaultValue: "Prix de vente (GNF)" })} className={inputClass} />
+                        )}
                         <input name="color" defaultValue={vehicle.color ?? ""} placeholder={t("owner.vehicleForm.color")} className={inputClass} />
                         <div className="rounded-lg border border-slate-200 bg-slate-100 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-                          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">📄 {t("owner.vehicleForm.documents")}</p>
+                          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("owner.vehicleForm.documents")}</p>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <label className="flex flex-col items-start gap-1">
                               <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("owner.vehicleForm.carteGrisePresent")}</span>
@@ -541,11 +640,7 @@ export function OwnerDashboardPage() {
                             </label>
                           </div>
                         </div>
-                        <select name="commune" defaultValue={vehicle.commune} className={inputClass}>{COMMUNES.map((c) => <option key={c}>{c}</option>)}</select>
-                        <div className="grid grid-cols-2 gap-3">
-                          <input required name="quartier" defaultValue={vehicle.quartier} placeholder={t("owner.vehicleForm.quartier")} autoComplete="off" className={inputClass} />
-                          <input required name="secteur" defaultValue={vehicle.secteur} placeholder={t("owner.vehicleForm.secteur")} autoComplete="off" className={inputClass} />
-                        </div>
+                        <CommuneQuartierSelect commune={vehicle.commune} quartier={vehicle.quartier} secteur={vehicle.secteur} inputClass={inputClass} />
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <textarea name="descriptionFr" rows={3} defaultValue={vehicle.descriptionFr ?? vehicle.description ?? ""} placeholder={t("owner.vehicleForm.descriptionFr")} className={inputClass} />
@@ -566,7 +661,7 @@ export function OwnerDashboardPage() {
                         </div>
                         <button className="rounded-lg bg-emerald-600 px-4 py-2.5 font-bold text-white hover:bg-emerald-700">{t("common.save")}</button>
                       </form>
-                    )}
+                      ); })()}
                   </article>
                 );
               })}
@@ -589,17 +684,30 @@ export function OwnerDashboardPage() {
           </div>
         </section>
 
-        {/* ── Lien vers la page Réservations ── */}
-        <section className="mt-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-black">{t("owner.dashboard.receivedBookings")}</h2>
-            <a href="/reservations" className="flex items-center gap-1 text-sm font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
-              {t("owner.dashboard.allBookings")} →
-            </a>
+        {/* ── Lien vers la page Réservations + Boost ── */}
+        <section className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black">{t("owner.dashboard.receivedBookings")}</h2>
+              <a href="/reservations" className="text-sm font-bold text-emerald-700 hover:text-emerald-800 dark:text-emerald-400">
+                {t("owner.dashboard.allBookings")} →
+              </a>
+            </div>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              {t("owner.dashboard.bookingsCount", { count: bookings.length })}
+            </p>
           </div>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            {t("owner.dashboard.bookingsCount", { count: bookings.length })}
-          </p>
+          <Link to="/proprietaire/boost" className="group rounded-2xl border-2 border-violet-200 bg-violet-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-violet-800 dark:bg-violet-500/10">
+            <p className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+              {t("boost.navLink", { defaultValue: "Booster" })}
+            </p>
+            <p className="mt-2 text-lg font-black text-violet-800 group-hover:text-violet-900 dark:text-violet-200">
+              {t("boost.dashboardCTA", { defaultValue: "Mettre en avant mes véhicules" })}
+            </p>
+            <p className="mt-1 text-xs text-violet-500 dark:text-violet-400">
+              {t("boost.dashboardHint", { defaultValue: "Plus de visibilité = plus de réservations" })}
+            </p>
+          </Link>
         </section>
       </main>
 

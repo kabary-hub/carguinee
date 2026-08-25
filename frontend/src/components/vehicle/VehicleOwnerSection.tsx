@@ -24,7 +24,7 @@ export function VehicleOwnerSection({ vehicle, contactOwner }: Props) {
           <p className="font-bold text-slate-900 dark:text-slate-100">
             {vehicle.owner.firstName} {vehicle.owner.lastName}
             {v.owner?.identityVerified && (
-              <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">✅ {t("vehicles.details.verifiedLabel")}</span>
+              <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">{t("vehicles.details.verifiedLabel")}</span>
             )}
           </p>
           {vehicle.owner.averageRating && (

@@ -22,7 +22,7 @@ function setAuthCookie(response: any, token: string) {
   response.cookie("auth_token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     path: "/",
     maxAge: 24 * 60 * 60 * 1000, // 24h
   });

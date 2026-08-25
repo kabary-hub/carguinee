@@ -534,8 +534,8 @@ model PasswordReset {
 // ═══════════════════════════════════════════════════════════════════════════
 model Payment {
   id              String   @id @default(uuid()) @db.Uuid
-  bookingId       String   @db.Uuid
-  booking         RentalBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId       String?  @db.Uuid
+  booking         RentalBooking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   userId          String   @db.Uuid
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount          Decimal  @db.Decimal(12, 0)

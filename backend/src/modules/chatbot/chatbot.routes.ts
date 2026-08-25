@@ -25,7 +25,7 @@ export const chatbotRouter = Router();
 // ── POST /api/chatbot/session — Initialiser une session ──────────────────
 chatbotRouter.post("/session", optionalAuth, async (request, response) => {
   try {
-    const userId = (request as any).user?.id;
+    const userId = request.auth?.userId;
     const { sessionId: existingSessionId } = request.body as { sessionId?: string };
     const sessionId = await initChatSession(userId, existingSessionId);
     response.json({ status: "ok", data: { sessionId } });

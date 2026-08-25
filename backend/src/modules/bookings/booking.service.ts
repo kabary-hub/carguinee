@@ -27,6 +27,7 @@ const bookingInclude = {
     },
   },
   customer: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+  payments: { orderBy: { createdAt: "desc" as const }, select: { id: true, amount: true, currency: true, status: true, provider: true, createdAt: true } },
 };
 
 export async function createBooking(customerId: string, input: CreateBookingInput) {

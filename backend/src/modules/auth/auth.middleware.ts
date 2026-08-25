@@ -16,7 +16,7 @@ function extractToken(request: Request): string | null {
     return authorization.slice("Bearer ".length).trim();
   }
   // Fallback : cookie httpOnly
-  const cookies = (request as any).cookies;
+  const cookies = request.cookies as Record<string, string> | undefined;
   if (cookies?.auth_token) {
     return cookies.auth_token;
   }

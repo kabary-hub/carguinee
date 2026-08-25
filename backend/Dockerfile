@@ -1,32 +1,53 @@
-FROM node:22-alpine AS builder
+# ══════════════════════════════════════════════════════════════════════════════
+# CarGuinée Backend — Dockerfile (multi-stage)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Étape 1 : Builder ──────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
-COPY package*.json ./
+
+# Installer les dépendances
+COPY package.json package-lock.json* ./
 RUN npm ci
-COPY prisma ./prisma/
-RUN npx prisma generate
-COPY . .
-RUN npx tsc
 
-# ── Production image ──────────────────────────────────────────────────────
-FROM node:22-alpine AS production
+# Copier le code source
+COPY . .
+
+# Générer le client Prisma
+RUN npx prisma generate
+
+# Compiler TypeScript
+RUN npm run build
+
+# ── Étape 2 : Production ───────────────────────────────────────────────────
+FROM node:20-alpine AS production
 
 WORKDIR /app
-RUN apk add --no-cache curl
 
-COPY package*.json ./
+# Installer les dépendances de production uniquement
+COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
-COPY --from=builder /app/prisma ./prisma/
-COPY --from=builder /app/src/generated ./src/generated/
-COPY --from=builder /app/dist ./dist/
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma/
 
-RUN npx prisma generate
+# Copier le client Prisma généré
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+# Copier le code compilé
+COPY --from=builder /app/dist ./dist
+
+# Copier le schema Prisma (nécessaire pour les migrations)
+COPY prisma ./prisma
+
+# Créer le dossier uploads
+RUN mkdir -p /app/uploads
+
+# Port
 EXPOSE 3000
-USER node
 
-HEALTHCHECK --interval=15s --timeout=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
+# Démarrer
 CMD ["node", "dist/server.js"]

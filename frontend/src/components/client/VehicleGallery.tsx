@@ -26,7 +26,7 @@ export function VehicleGallery({ photos, vehicleName }: { photos: GalleryPhoto[]
   }, [isFullscreen, orderedPhotos.length]);
 
   if (!selectedPhoto) {
-    return <div className="flex h-80 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-800 to-slate-600 text-7xl dark:from-slate-900 dark:to-slate-700">🚗</div>;
+    return <div className="flex h-80 items-center justify-center rounded-3xl bg-gradient-to-br from-slate-800 to-slate-600 text-sm font-bold text-white/60 uppercase dark:from-slate-900 dark:to-slate-700">{t("vehicles.noPhoto", { defaultValue: "Pas de photo" })}</div>;
   }
 
   return <div>

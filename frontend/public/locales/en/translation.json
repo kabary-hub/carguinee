@@ -113,7 +113,10 @@
     "catalogDescription": "Compare chauffeur-driven rental and sale offers currently listed in Conakry.",
     "noVehicles": "No vehicles available",
     "noVehiclesFound": "No vehicles found",
+    "noPhoto": "No photo",
     "modifyFilters": "Modify your filters or check back later.",
+    "showMap": "Location",
+    "showList": "List",
     "vehicleCount": "{{count}} vehicle(s) available",
     "loadingVehicles": "Loading vehicles…",
     "filters": {
@@ -232,6 +235,11 @@
       "odometerGuaranteed": "Mileage guaranteed",
       "odometerGuaranteedYes": "✅ Yes",
       "odometerGuaranteedNo": "❌ No"
+    },
+    "mode": {
+      "rentalAndSale": "Rental & Sale",
+      "rental": "Rental",
+      "sale": "Sale"
     },
     "adminFavorite": "Recommended",
     "status": {
@@ -390,6 +398,14 @@
         "photoRequired": "Add at least one photo before submitting."
       },
       "editMode": "Edit {{brand}} {{model}}",
+      "commercialMode": "Commercial mode",
+      "commercialModeHelp": "Choose whether the vehicle is available for rent, sale, or both.",
+      "modeRental": "Rental",
+      "modeSale": "Sale",
+      "modeBoth": "Both",
+      "salePrice": "Sale price (GNF)",
+      "salePricePlaceholder": "Sale price in GNF",
+      "selectModeFirst": "Select a commercial mode above.",
       "documents": "Documents & Compliance",
       "carteGrisePresent": "Registration card present?",
       "visiteTechniqueValidUntil": "Technical inspection valid until",
@@ -985,5 +1001,17 @@
     "activate": "Activate {{level}} boost",
     "cancel": "Cancel",
     "expires": "Expires on"
+  },
+  "boost": {
+    "title": "Boost my vehicles",
+    "subtitle": "Showcase your vehicles to attract more customers.",
+    "selectVehicle": "Select a vehicle",
+    "noVehicles": "No published vehicle. Publish a vehicle first to boost it.",
+    "history": "Boost history",
+    "active": "Active",
+    "expired": "Expired",
+    "navLink": "Boost",
+    "dashboardCTA": "Showcase my vehicles",
+    "dashboardHint": "More visibility = more bookings"
   }
 }

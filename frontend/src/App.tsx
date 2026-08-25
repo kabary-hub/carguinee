@@ -14,6 +14,7 @@ const ProfilePage = lazy(() => import("./pages/client/ProfilePage").then((m) => 
 const MyBookingsPage = lazy(() => import("./pages/client/MyBookingsPage").then((m) => ({ default: m.MyBookingsPage })));
 const OwnerDashboardPage = lazy(() => import("./pages/owner/OwnerDashboardPage").then((m) => ({ default: m.OwnerDashboardPage })));
 const AddVehiclePage = lazy(() => import("./pages/owner/AddVehiclePage").then((m) => ({ default: m.AddVehiclePage })));
+const OwnerBoostPage = lazy(() => import("./pages/owner/OwnerBoostPage").then((m) => ({ default: m.OwnerBoostPage })));
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })));
 const AdminChatsPage = lazy(() => import("./pages/admin/AdminChatsPage").then((m) => ({ default: m.AdminChatsPage })));
 const AdminFavoritesPage = lazy(() => import("./pages/admin/AdminFavoritesPage").then((m) => ({ default: m.AdminFavoritesPage })));
@@ -27,6 +28,7 @@ const MentionsLegalesPage = lazy(() => import("./pages/legal/MentionsLegalesPage
 const PolitiqueConfidentialitePage = lazy(() => import("./pages/legal/PolitiqueConfidentialitePage").then((m) => ({ default: m.PolitiqueConfidentialitePage })));
 const RegistreTraitementsPage = lazy(() => import("./pages/legal/RegistreTraitementsPage").then((m) => ({ default: m.RegistreTraitementsPage })));
 const ReferralPage = lazy(() => import("./pages/client/ReferralPage").then((m) => ({ default: m.ReferralPage })));
+const LoyaltyPage = lazy(() => import("./pages/client/LoyaltyPage").then((m) => ({ default: m.LoyaltyPage })));
 
 // ── Fallback de chargement ──────────────────────────────────────────────────
 function PageFallback() {
@@ -58,6 +60,7 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["PROPRIETAIRE", "ADMIN"]} />}>
           <Route path="/proprietaire" element={<OwnerDashboardPage />} />
           <Route path="/proprietaire/ajouter" element={<AddVehiclePage />} />
+          <Route path="/proprietaire/boost" element={<OwnerBoostPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
           <Route path="/administration" element={<AdminDashboardPage />} />
@@ -73,6 +76,7 @@ function App() {
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/messages/:conversationId" element={<MessagesPage />} />
           <Route path="/parrainage" element={<ReferralPage />} />
+          <Route path="/fidelite" element={<LoyaltyPage />} />
         </Route>
         {/* ── Pages légales ── */}
         <Route path="/conditions-generales" element={<ConditionsGeneralesPage />} />

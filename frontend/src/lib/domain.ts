@@ -19,7 +19,8 @@ export type Vehicle = {
   _count?: { reviews?: number; favorites?: number; rentalBookings?: number };
   adminFavorited?: boolean;
 };
-export type Booking = { id: string; startDate: string; endDate: string; dailyRateGnf: number; totalAmountGnf: number; depositAmountGnf: number; depositStatus: string; status: BookingStatus; notes?: string | null; vehicle: Vehicle; customer?: { id: string; firstName: string; lastName: string; phone: string; email?: string | null } };
+export type Payment = { id: string; amount: number; currency: string; status: string; provider: string; createdAt: string };
+export type Booking = { id: string; startDate: string; endDate: string; dailyRateGnf: number; totalAmountGnf: number; depositAmountGnf: number; depositStatus: string; status: BookingStatus; notes?: string | null; vehicle: Vehicle; customer?: { id: string; firstName: string; lastName: string; phone: string; email?: string | null }; payments?: Payment[] };
 export type ApiResponse<T> = { status: "ok"; data: T };
 export const formatGnf = (value?: number | null) => new Intl.NumberFormat("fr-GN", { style: "currency", currency: "GNF", maximumFractionDigits: 0 }).format(value ?? 0);
 export const formatDate = (value: string) => new Intl.DateTimeFormat("fr-GN", { dateStyle: "medium" }).format(new Date(value));

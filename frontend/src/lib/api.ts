@@ -6,12 +6,16 @@ export type ApiError = Error & {
 
 /**
  * Récupère le token JWT stocké côté client.
- * Le serveur place aussi le JWT dans un cookie httpOnly, mais ce cookie
- * n'est pas envoyé par les requêtes fetch cross-origin (même avec
- * credentials: "include") si sameSite !== "none". On utilise donc
- * le token stocké pour construire le header Authorization.
+ *
+ * Mode réel (production) : le JWT est dans un cookie httpOnly envoyé
+ * automatiquement par le navigateur. Pas besoin de localStorage.
+ *
+ * Mode développement : le cookie sameSite=lax n'est pas envoyé en
+ * cross-origin (port différent). On utilise donc localStorage comme fallback.
  */
-export function getStoredToken() {
+export function getStoredToken(): string | null {
+  // En prod, le cookie httpOnly est le mécanisme principal
+  // On garde le fallback localStorage pour le dev local (ports différents)
   return localStorage.getItem("carguinee_access_token");
 }
 

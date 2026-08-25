@@ -32,7 +32,7 @@ export function VehicleInfoSection({ vehicle, getDescription }: Props) {
 
       {/* Caractéristiques techniques */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-lg font-black">📋 {t("vehicles.details.technicalSpecs")}</h2>
+        <h2 className="text-lg font-black">{t("vehicles.details.technicalSpecs")}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <InfoBadge label={t("vehicles.details.brand")} value={vehicle.brand} />
           <InfoBadge label={t("vehicles.details.model")} value={vehicle.model} />
@@ -71,7 +71,7 @@ export function VehicleInfoSection({ vehicle, getDescription }: Props) {
         {/* Maintenance */}
         {(v.lastMaintenanceDate || v.nextMaintenanceDate) && (
           <div className="mt-4 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">🔧 {t("vehicles.details.maintenance")}</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t("vehicles.details.maintenance")}</p>
             <div className="mt-2 grid grid-cols-2 gap-3">
               {v.lastMaintenanceDate && (
                 <InfoBadge label={t("vehicles.details.lastMaintenance")} value={new Date(String(v.lastMaintenanceDate)).toLocaleDateString("fr-FR")} />

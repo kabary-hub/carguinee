@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "../../components/AppShell";
 import { VehicleGallery } from "../../components/client/VehicleGallery";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -45,12 +45,18 @@ type ConditionReport = {
   additionalNotes: string | null;
 };
 
+/**
+ * Page de détail d'un véhicule
+ * Affiche la galerie, les caractéristiques, les documents,
+ * le propriétaire, les avis et le formulaire de réservation.
+ */
 export function VehicleDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
   const { t, i18n } = useTranslation();
+  const queryClient = useQueryClient();
 
   const [lang, setLang] = useState(i18n.language?.startsWith("en") ? "en" : "fr");
   const [message, setMessage] = useState("");
@@ -67,7 +73,7 @@ export function VehicleDetailPage() {
     return () => { i18n.off("languageChanged", handler); };
   }, [i18n]);
 
-  // ── Vehicle ──
+  // ── Véhicule ──
   const vehicleQuery = useQuery({
     queryKey: ["vehicle", id],
     queryFn: () => apiFetch<ApiResponse<Vehicle>>(`/api/vehicles/${id}`),
@@ -76,7 +82,7 @@ export function VehicleDetailPage() {
   const vehicle = vehicleQuery.data?.data ?? null;
   const error = vehicleQuery.error?.message ?? "";
 
-  // ── Reviews ──
+  // ── Avis ──
   const reviewsQuery = useQuery({
     queryKey: ["reviews", id],
     queryFn: () => apiFetch<ApiResponse<ReviewsResponse>>(`/api/reviews/vehicle/${id}`),
@@ -85,7 +91,7 @@ export function VehicleDetailPage() {
   const reviews = reviewsQuery.data?.data.items ?? [];
   const reviewsTotal = reviewsQuery.data?.data.pagination.total ?? 0;
 
-  // ── Completed bookings (for review eligibility) ──
+  // ── Réservations terminées (pour vérifier l'éligibilité à laisser un avis) ──
   const bookingsQuery = useQuery({
     queryKey: ["bookings", "mine"],
     queryFn: () => apiFetch<ApiResponse<Booking[]>>("/api/bookings/mine"),
@@ -98,13 +104,15 @@ export function VehicleDetailPage() {
     return completed?.id ?? null;
   }, [bookingsQuery.data, id]);
 
-  // ── Derived: has already reviewed ──
-  const hasAlreadyReviewed = useMemo(
+  // ── A déjà laissé un avis (useState + useEffect pour pouvoir le modifier via setHasAlreadyReviewed) ──
+  const [hasAlreadyReviewed, setHasAlreadyReviewed] = useState(
     () => reviews.some((r) => r.reviewer.id === user?.id),
-    [reviews, user?.id],
   );
+  useEffect(() => {
+    setHasAlreadyReviewed(reviews.some((r) => r.reviewer.id === user?.id));
+  }, [reviews, user?.id]);
 
-  // ── Favorite check ──
+  // ── Vérification favori ──
   const favQuery = useQuery({
     queryKey: ["favorite", id],
     queryFn: () => apiFetch<{ status: string; data: { isFavorite: boolean } }>(`/api/favorites/check/${id}`),
@@ -118,18 +126,23 @@ export function VehicleDetailPage() {
     return v.descriptionFr || v.descriptionEn || v.description || t("vehicles.details.noDescription");
   }, [lang, t]);
 
+  /**
+   * Ajouter / retirer un favori
+   * CORRIGÉ : utilise queryClient.invalidateQueries au lieu de setIsFavorited inexistant
+   */
   const toggleFavorite = async () => {
     if (!user) { navigate("/connexion"); return; }
     try {
       if (isFavorited) {
         await apiFetch(`/api/favorites/${id}`, { method: "DELETE" });
-        setIsFavorited(false);
         showToast(t("favorites.removeSuccess"));
       } else {
         await apiFetch("/api/favorites", { method: "POST", body: JSON.stringify({ vehicleId: id }) });
-        setIsFavorited(true);
         showToast(t("favorites.addSuccess"));
       }
+      // Invalider les requêtes pour recharger l'état du favori
+      queryClient.invalidateQueries({ queryKey: ["favorite", id] });
+      queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch (reason) {
       showToast(reason instanceof Error ? reason.message : "Erreur", "error");
     }
@@ -206,7 +219,7 @@ export function VehicleDetailPage() {
       <main className={`mx-auto max-w-6xl px-4 py-6 sm:py-10 ${vehicle.adminFavorited ? "rounded-3xl border-2 border-emerald-400 bg-emerald-50/30 dark:border-emerald-600 dark:bg-emerald-500/5" : ""}`}>
         {vehicle.adminFavorited && (
           <div className="mb-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-100 to-green-100 px-4 py-2.5 text-sm font-bold text-emerald-800 shadow-sm dark:from-emerald-500/15 dark:to-green-500/15 dark:text-emerald-300">
-            ⭐ {t("vehicles.adminFavorite")}
+            {t("vehicles.adminFavorite")}
           </div>
         )}
         <Link to="/vehicules" className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
@@ -223,14 +236,26 @@ export function VehicleDetailPage() {
             .map((item) => (
               <span key={item} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-300">{item}</span>
             ))}
-          {documentsEnRegle && <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✅ {t("vehicles.details.documentsOk")}</span>}
-          {v.owner?.identityVerified && <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">✅ {t("vehicles.details.verified")}</span>}
+          {documentsEnRegle && <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">{t("vehicles.details.documentsOk")}</span>}
+          {v.owner?.identityVerified && <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">{t("vehicles.details.verified")}</span>}
         </div>
 
         <div className="mt-4 flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-black sm:text-3xl">{vehicle.brand} {vehicle.model}</h1>
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">📍 {vehicle.commune}, {vehicle.quartier} · {vehicle.secteur}</p>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 sm:text-base">{vehicle.commune}, {vehicle.quartier} · {vehicle.secteur}</p>
+
+            {/* Badge mode : Location / Vente / Location & Vente */}
+            <p className="mt-1 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+              {vehicle.supportsRental && vehicle.supportsSale
+                ? t("vehicles.mode.rentalAndSale", { defaultValue: "Location & Vente" })
+                : vehicle.supportsRental
+                  ? t("vehicles.mode.rental", { defaultValue: "Location" })
+                  : vehicle.supportsSale
+                    ? t("vehicles.mode.sale", { defaultValue: "Vente" })
+                    : null}
+            </p>
+
             {vehicle.owner?.averageRating && <div className="mt-2"><RatingStars rating={vehicle.owner.averageRating} size="sm" count={reviewsTotal} /></div>}
           </div>
           <button onClick={toggleFavorite} className={`rounded-full border p-3 text-xl transition ${isFavorited ? "border-red-300 bg-red-50 text-red-500 dark:border-red-800 dark:bg-red-500/15 dark:text-red-400" : "border-slate-300 bg-white text-slate-400 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:text-red-400"}`} title={isFavorited ? t("vehicles.details.removeFromFavorites") : t("vehicles.details.addToFavorites")}>

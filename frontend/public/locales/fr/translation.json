@@ -113,7 +113,10 @@
     "catalogDescription": "Comparez les offres de location avec chauffeur et de vente actuellement publiées à Conakry.",
     "noVehicles": "Aucun véhicule disponible",
     "noVehiclesFound": "Aucun véhicule trouvé",
+    "noPhoto": "Pas de photo",
     "modifyFilters": "Modifiez vos filtres ou revenez plus tard.",
+    "showMap": "Localisation",
+    "showList": "Liste",
     "vehicleCount": "{{count}} véhicule(s) disponible(s)",
     "loadingVehicles": "Chargement des véhicules…",
     "filters": {
@@ -232,6 +235,11 @@
       "odometerGuaranteed": "Kilométrage garanti",
       "odometerGuaranteedYes": "✅ Oui",
       "odometerGuaranteedNo": "❌ Non"
+    },
+    "mode": {
+      "rentalAndSale": "Location & Vente",
+      "rental": "Location",
+      "sale": "Vente"
     },
     "adminFavorite": "Recommandé",
     "status": {
@@ -389,6 +397,14 @@
         "photoRequired": "Ajoutez au moins une photo avant de soumettre."
       },
       "editMode": "Modifier {{brand}} {{model}}",
+      "commercialMode": "Mode de commercialisation",
+      "commercialModeHelp": "Choisissez si le véhicule est disponible à la location, à la vente, ou les deux.",
+      "modeRental": "Location",
+      "modeSale": "Vente",
+      "modeBoth": "Les deux",
+      "salePrice": "Prix de vente (GNF)",
+      "salePricePlaceholder": "Prix de vente en GNF",
+      "selectModeFirst": "Sélectionnez un mode de commercialisation ci-dessus.",
       "documents": "Documents & Conformité",
       "carteGrisePresent": "Carte grise présente ?",
       "visiteTechniqueValidUntil": "Visite technique valide jusqu'au",
@@ -985,5 +1001,17 @@
     "activate": "Activer le boost {{level}}",
     "cancel": "Annuler",
     "expires": "Expire le"
+  },
+  "boost": {
+    "title": "Booster mes véhicules",
+    "subtitle": "Mettez en avant vos véhicules pour attirer plus de clients.",
+    "selectVehicle": "Sélectionnez un véhicule",
+    "noVehicles": "Aucun véhicule publié. Publiez d'abord un véhicule pour pouvoir le booster.",
+    "history": "Historique des boosts",
+    "active": "Actif",
+    "expired": "Expiré",
+    "navLink": "Booster",
+    "dashboardCTA": "Mettre en avant mes véhicules",
+    "dashboardHint": "Plus de visibilité = plus de réservations"
   }
 }

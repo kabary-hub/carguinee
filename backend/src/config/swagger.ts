@@ -71,7 +71,7 @@ const options: swaggerJsdoc.Options = {
             model: { type: "string" },
             year: { type: "integer", nullable: true },
             type: { type: "string", enum: ["CITADINE", "BERLINE", "SUV", "QUATRE_QUATRE", "UTILITAIRE", "MINIBUS", "CAMION", "MOTO", "AUTRE"] },
-            commune: { type: "string", enum: ["KALOUM", "DIXINN", "MATAM", "RATOMA", "MATOTO"] },
+            commune: { type: "string", enum: ["COYAH", "DIXINN", "DUBREKA", "GBESSIA", "KAGBELEN", "KALOUM", "KASSA", "LAMBANYI", "MANEYAH", "MATAM", "MATOTO", "RATOMA", "SANOYAH", "SONFONIA", "TOMBOLIA"] },
             quartier: { type: "string" },
             publicationStatus: { type: "string", enum: ["BROUILLON", "EN_ATTENTE_VALIDATION", "PUBLIEE", "REJETEE", "ARCHIVEE"] },
             supportsRental: { type: "boolean" },

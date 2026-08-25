@@ -44,7 +44,7 @@ export function VehicleReviewsSection({
             onClick={() => setShowReviewForm(true)}
             className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700"
           >
-            ⭐ {t("reviews.leaveReview")}
+            {t("reviews.leaveReview")}
           </button>
         )}
       </div>
