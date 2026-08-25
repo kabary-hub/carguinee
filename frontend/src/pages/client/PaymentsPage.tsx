@@ -6,6 +6,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
+import { SkeletonBar, SkeletonCard, SkeletonListRow } from "../../components/ui";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -161,11 +162,10 @@ export function PaymentsPage() {
         {/* ── Liste des paiements ── */}
         <div className="mt-6">
           {loading && payments.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-              <span className="ml-3 text-slate-500 dark:text-slate-400">
-                {t("payments.loading", { defaultValue: "Chargement…" })}
-              </span>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonListRow key={i} />
+              ))}
             </div>
           ) : error ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-800 dark:bg-red-500/10">

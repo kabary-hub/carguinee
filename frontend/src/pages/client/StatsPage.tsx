@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppShell } from "../../components/AppShell";
 import { useAuth } from "../../contexts/AuthContext";
+import { SkeletonBar, SkeletonCard, SkeletonCardBlock, SkeletonListRow } from "../../components/ui";
 import {
   BarChart,
   Bar,
@@ -149,11 +150,39 @@ export function StatsPage() {
     return (
       <AppShell>
         <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-            <span className="ml-3 text-slate-500 dark:text-slate-400">
-              {t("stats.loading", { defaultValue: "Chargement…" })}
-            </span>
+          {/* Titre skeleton */}
+          <SkeletonBar width="200px" height={32} rounded="lg" className="mb-2" />
+          <SkeletonBar width="350px" height={14} className="mb-6" />
+
+          {/* Filtres skeleton */}
+          <div className="mb-6 flex gap-2">
+            <SkeletonBar width={80} height={32} rounded="full" />
+            <SkeletonBar width={80} height={32} rounded="full" />
+            <SkeletonBar width={80} height={32} rounded="full" />
+          </div>
+
+          {/* Cartes résumé skeleton */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <SkeletonBar width={28} height={28} rounded="lg" className="mb-2" />
+                <SkeletonBar width="60%" height={10} className="mb-2" />
+                <SkeletonBar width="50%" height={22} />
+              </div>
+            ))}
+          </div>
+
+          {/* Graphiques skeleton */}
+          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <SkeletonCardBlock />
+            <SkeletonCardBlock />
+          </div>
+
+          {/* Liste skeleton */}
+          <div className="mt-8 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonListRow key={i} />
+            ))}
           </div>
         </main>
       </AppShell>
