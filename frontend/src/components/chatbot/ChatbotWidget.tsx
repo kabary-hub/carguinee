@@ -40,8 +40,8 @@ export function ChatbotWidget() {
         method: "POST",
         body: JSON.stringify({ sessionId: existingId }),
       }),
-    onSuccess: (data: { sessionId: string }) => {
-      setSessionId(data.sessionId);
+    onSuccess: (resp: { status: string; data: { sessionId: string } }) => {
+      setSessionId(resp.data.sessionId);
     },
   });
 
@@ -54,9 +54,9 @@ export function ChatbotWidget() {
   // Historique
   useQuery<ChatMessage[]>({
     queryKey: ["chat-history", sessionId],
-    queryFn: () => apiFetch(`/api/chatbot/history?sessionId=${sessionId}`),
+    queryFn: () => apiFetch<{ status: string; data: ChatMessage[] }>(`/api/chatbot/history?sessionId=${sessionId}`),
     enabled: !!sessionId,
-    onSuccess: (data) => setMessages(data),
+    onSuccess: (resp) => setMessages(resp.data),
   });
 
   // Envoyer un message
@@ -70,7 +70,8 @@ export function ChatbotWidget() {
           lang: i18n.language === "fr" ? "fr" : "en",
         }),
       }),
-    onSuccess: (data: ChatResponse) => {
+    onSuccess: (resp: { status: string; data: ChatResponse }) => {
+      const data = resp.data;
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.message, faqEntryId: data.faqEntryId, createdAt: new Date().toISOString() },

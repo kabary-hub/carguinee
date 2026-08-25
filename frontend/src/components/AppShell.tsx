@@ -278,7 +278,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* ═══ SIDEBAR DESKTOP (fixe) ═══ */}
         {user && (
-          <aside className="hidden w-64 flex-shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex lg:flex-col">
+          <aside className="sticky top-0 hidden h-screen w-64 flex-shrink-0 overflow-y-auto border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:flex lg:flex-col">
             {sidebarContent}
           </aside>
         )}
