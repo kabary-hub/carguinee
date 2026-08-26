@@ -49,7 +49,7 @@ describe("AppShell", () => {
         </AppShell>
       </MemoryRouter>,
     );
-    expect(screen.getByText(/CarGuinée/)).toBeInTheDocument();
+    expect(screen.getAllByText(/CarGuinée/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("affiche un lien vers le profil", () => {
@@ -86,6 +86,6 @@ describe("AppShell", () => {
         </AppShell>
       </MemoryRouter>,
     );
-    expect(screen.getByRole("navigation")).toBeInTheDocument();
+    expect(screen.getAllByRole("navigation").length).toBeGreaterThanOrEqual(1);
   });
 });

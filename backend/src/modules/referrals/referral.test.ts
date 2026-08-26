@@ -34,8 +34,8 @@ describe('Referrals', () => {
       const calculateBonus = (amount: number): number => {
         return Math.min(amount * 0.10, 50000);
       };
-      assert.equal(calculateBonus(100000), 50000);
-      assert.equal(calculateBonus(200000), 50000);
+      assert.equal(calculateBonus(600000), 50000);
+      assert.equal(calculateBonus(1000000), 50000);
       assert.equal(calculateBonus(50000), 5000);
     });
 

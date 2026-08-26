@@ -23,7 +23,7 @@ describe('Review validation', () => {
   it('rejects decimal rating', () => assert.ok(!isValidRating(3.5)));
 
   it('accepts valid comment', () => assert.ok(isValidComment('Great car!')));
-  it('rejects empty comment', () => assert.ok(!isValidComment('')));
+  it('allows empty comment (optional field)', () => assert.ok(isValidComment('')));
   it('accepts max length comment', () => assert.ok(isValidComment('a'.repeat(1000))));
   it('rejects over length comment', () => assert.ok(!isValidComment('a'.repeat(1001))));
 });

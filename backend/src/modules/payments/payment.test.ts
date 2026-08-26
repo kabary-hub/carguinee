@@ -14,25 +14,25 @@ function normalizePhone(input: string): string {
 function isValidGuineaPhone(phone: string): boolean {
   const cleaned = phone.replace(/[\s\-().]/g, '');
   const normalized = normalizePhone(cleaned);
-  return /^224\d{7}$/.test(normalized);
+  return /^224\d{9}$/.test(normalized);
 }
 
 describe('Payment - Guinea phone normalization', () => {
   it('removes leading +224', () => {
-    assert.equal(normalizePhone('+224620000000'), '22462000000');
+    assert.equal(normalizePhone('+2246200000001'), '2246200000001');
   });
 
   it('removes leading 00224', () => {
-    assert.equal(normalizePhone('0022462000000'), '22462000000');
+    assert.equal(normalizePhone('002246200000001'), '2246200000001');
   });
 
   it('keeps 224 prefix intact', () => {
-    assert.equal(normalizePhone('22462000000'), '22462000000');
+    assert.equal(normalizePhone('2246200000001'), '2246200000001');
   });
 
   it('strips spaces and dashes', () => {
-    assert.equal(normalizePhone('224 62 00 00 00'), '22462000000');
-    assert.equal(normalizePhone('224-620-000-00'), '22462000000');
+    assert.equal(normalizePhone('224 620 000 001'), '224620000001');
+    assert.equal(normalizePhone('224-620-000-001'), '224620000001');
   });
 
   it('detects invalid short number', () => {
@@ -40,7 +40,7 @@ describe('Payment - Guinea phone normalization', () => {
   });
 
   it('validates correct 12-digit number with country code', () => {
-    assert.ok(isValidGuineaPhone('+22462000001'));
+    assert.ok(isValidGuineaPhone('+224620000001'));
   });
 
   it('rejects non-numeric input', () => {
@@ -91,11 +91,11 @@ describe('Payment amount validation', () => {
 
 describe('Guinea phone number formats', () => {
   const validFormats = [
-    '+22462000001',
-    '22462000001',
-    '0022462000001',
-    '+224 620 000 01',
-    '224-620-000-01',
+    '+224620000001',
+    '224620000001',
+    '00224620000001',
+    '+224 620 000 001',
+    '224-620-000-001',
   ];
 
   const invalidFormats = [
@@ -151,8 +151,6 @@ describe('GNF currency formatting', () => {
 // ── Payment status validation ──────────────────────────────────────────────
 
 describe('Payment status transitions', () => {
-  const validStatuses = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
-
   function isValidStatusTransition(from: string, to: string): boolean {
     const transitions: Record<string, string[]> = {
       PENDING: ['COMPLETED', 'FAILED'],

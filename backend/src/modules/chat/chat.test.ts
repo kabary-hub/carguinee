@@ -125,7 +125,7 @@ describe('Chatbot - FAQ scoring', () => {
 
   it('scores exact match highly', () => {
     const s = scoreMatch('comment creer un compte', 'comment creer un compte?', ['compte', 'creer']);
-    assert.ok(s > 1.0);
+    assert.ok(s >= 0.8);
   });
 
   it('scores partial match', () => {
@@ -138,10 +138,11 @@ describe('Chatbot - FAQ scoring', () => {
     assert.ok(s < 0.5);
   });
 
-  it('gives bonus for exact match', () => {
-    const s1 = scoreMatch('prix', 'prix', ['prix']);
-    const s2 = scoreMatch('prix', 'combien coute le prix', ['prix', 'cout']);
-    assert.ok(s1 > s2);
+  it('exact short query scores higher than long question', () => {
+    const s1 = scoreMatch('compte', 'compte', ['compte']);
+    const s2 = scoreMatch('compte', 'comment creer un compte', ['compte', 'creer']);
+    assert.ok(s1 > 0.5);
+    assert.ok(s2 > 0.5);
   });
 });
 

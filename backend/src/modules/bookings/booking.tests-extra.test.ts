@@ -7,7 +7,7 @@ function rentalDays(start: string, end: string): number {
   const startDate = new Date(start);
   const endDate = new Date(end);
   const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 }
 
 function rentalTotalPrice(pricePerDay: number, start: string, end: string): number {
@@ -59,8 +59,8 @@ describe('Booking Calculations', () => {
       assert.strictEqual(rentalTotalPrice(50000, '2024-01-01', '2024-01-08'), 350000);
     });
 
-    it('should calculate price for 0 days (same day)', () => {
-      assert.strictEqual(rentalTotalPrice(50000, '2024-01-01', '2024-01-01'), 0);
+    it('should calculate price for 0 days (same day = 1 day minimum)', () => {
+      assert.strictEqual(rentalTotalPrice(50000, '2024-01-01', '2024-01-01'), 50000);
     });
 
     it('should handle zero price per day', () => {
@@ -128,7 +128,7 @@ function normalizeGuineanPhone(input: string): string {
 
 function isValidGuineanPhone(phone: string): boolean {
   const normalized = normalizeGuineanPhone(phone);
-  return /^224\d{7}$/.test(normalized);
+  return /^224\d{9}$/.test(normalized);
 }
 
 describe('Guinea Phone Validation', () => {
@@ -137,11 +137,11 @@ describe('Guinea Phone Validation', () => {
   });
 
   it('should accept format with 00 prefix', () => {
-    assert.ok(isValidGuineanPhone('0022462100001'));
+    assert.ok(isValidGuineanPhone('00224621000001'));
   });
 
   it('should accept raw 9-digit format', () => {
-    assert.ok(isValidGuineanPhone('22462100001'));
+    assert.ok(isValidGuineanPhone('224621000001'));
   });
 
   it('should accept phone with spaces', () => {
@@ -214,7 +214,7 @@ describe('Report Date Ranges', () => {
 // ── Translation cache key generation ─────────────────────────────────────
 
 function translationCacheKey(text: string, targetLang: string): string {
-  return `tr:${targetLang}:${text.toLowerCase().trim().slice(0, 100)}`;
+  return `tr:${targetLang}:${text.toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 100)}`;
 }
 
 describe('Translation cache keys', () => {

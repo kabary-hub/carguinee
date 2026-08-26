@@ -14,7 +14,7 @@ describe("VehicleGallery", () => {
 
   it("affiche un placeholder quand il n'y a pas de photos", () => {
     renderWithProviders(<VehicleGallery photos={emptyPhotos} brand="Toyota" model="Corolla" />);
-    expect(screen.getByText(/no photo/i)).toBeInTheDocument();
+    expect(screen.getByText(/pas de photo/i)).toBeInTheDocument();
   });
 
   it("affiche une image", () => {

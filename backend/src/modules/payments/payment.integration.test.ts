@@ -24,19 +24,19 @@ describe('Payment API — phone validation', () => {
   }
 
   it('should accept valid Guinea phone number', () => {
-    assert.ok(isValidGuineaPhone('22412345678'));
+    assert.ok(isValidGuineaPhone('224621000001'));
   });
 
   it('should accept phone with + prefix', () => {
-    assert.ok(isValidGuineaPhone('+22412345678'));
+    assert.ok(isValidGuineaPhone('+224621000001'));
   });
 
   it('should accept phone with 00 prefix', () => {
-    assert.ok(isValidGuineaPhone('0022412345678'));
+    assert.ok(isValidGuineaPhone('00224621000001'));
   });
 
   it('should accept phone with spaces', () => {
-    assert.ok(isValidGuineaPhone('224 12 34 56 78'));
+    assert.ok(isValidGuineaPhone('224 621 000 001'));
   });
 
   it('should reject too short number', () => {
@@ -44,7 +44,7 @@ describe('Payment API — phone validation', () => {
   });
 
   it('should reject non-Guinea country code', () => {
-    assert.equal(isValidGuineaPhone('21212345678'), false);
+    assert.equal(isValidGuineaPhone('2121234567890'), false);
   });
 
   it('should reject empty string', () => {

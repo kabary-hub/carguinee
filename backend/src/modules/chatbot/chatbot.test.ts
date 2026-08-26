@@ -79,7 +79,7 @@ describe('Chatbot pattern matching', () => {
     const cases = [
       'je veux reserver une voiture',
       'comment book a car',
-      'prendre une voiture',
+      'prendre un vehicule',
       'comment louer une voiture',
     ];
 
