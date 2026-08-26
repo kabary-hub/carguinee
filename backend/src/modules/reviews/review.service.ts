@@ -1,5 +1,4 @@
 import { prisma } from "../../lib/prisma.js";
-import type { AuthRole } from "../../types/express.js";
 import type { CreateReviewInput } from "./review.schemas.js";
 
 // ── Inclusions communes pour les relations d'un avis ───────────────────────────

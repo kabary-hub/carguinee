@@ -12,7 +12,6 @@
 
 import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
-import { env } from "../config/env.js";
 
 const CSRF_COOKIE = "XSRF-TOKEN";
 const CSRF_HEADER = "x-csrf-token";

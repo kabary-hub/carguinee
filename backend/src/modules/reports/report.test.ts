@@ -105,7 +105,6 @@ describe('Reports module', () => {
   describe('Report pagination', () => {
     it('should paginate with page and pageSize', () => {
       const total = 45;
-      const page = 2;
       const pageSize = 10;
       const totalPages = Math.ceil(total / pageSize);
       assert.equal(totalPages, 5);

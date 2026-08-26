@@ -8,6 +8,11 @@ on:
 
 env:
   NODE_VERSION: "20"
+  # ⚠️ Valeurs de TEST uniquement, jetables et sans valeur en dehors de la CI :
+  # base éphémère (service postgres ci-dessous), secrets factices juste assez
+  # longs/valides pour satisfaire la validation Zod (backend/src/config/env.ts).
+  # Ne JAMAIS committer de vrais secrets ici — utiliser les GitHub Secrets
+  # (${{ secrets.NOM }}) si un jour ce workflow touche un environnement réel.
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public"
   JWT_SECRET: "test-secret-key-for-ci-that-is-at-least-32-chars-long"
   ENCRYPTION_KEY: "aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344"
@@ -48,6 +53,15 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      # Lint BLOQUANT : oxlint (Rust) parse TS 7 nativement — typescript-eslint
+      # ne supporte pas encore TS 7 (peer typescript <6.1.0). Catégorie
+      # "correctness" + no-unused-vars en ERREUR (voir backend/.oxlintrc.json) :
+      # tout code mort ou bug détecté fait échouer la CI. Placé tôt = feedback
+      # rapide, avant même la génération Prisma (oxlint ignore src/generated).
+      - name: Lint (oxlint)
+        working-directory: backend
+        run: npm run lint
+
       - name: Generate Prisma client
         working-directory: backend
         run: npx prisma generate
@@ -55,6 +69,14 @@ jobs:
       - name: Run database migrations
         working-directory: backend
         run: npx prisma migrate deploy
+
+      # Garde anti-dérive : la base produite par les migrations validées doit
+      # correspondre EXACTEMENT à schema.prisma. Empêche qu'une colonne poussée
+      # via `prisma db push` (jamais migrée) passe tsc mais casse à l'exécution.
+      # Sortie != 0 (2 = dérive détectée) → échec immédiat, avant tsc et les tests.
+      - name: Check for schema drift
+        working-directory: backend
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 
       - name: Type check
         working-directory: backend
@@ -86,6 +108,10 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit
 
+      # Lint frontend : NON bloquant pour l'instant (continue-on-error). L'app a
+      # un backlog connu d'erreurs eslint (imports dupliqués, variables
+      # inutilisées) à résorber avant de le rendre bloquant. Le lint BACKEND est
+      # déjà bloquant (job backend-test → « Lint (oxlint) »).
       - name: Lint
         working-directory: frontend
         run: npm run lint
@@ -100,7 +126,9 @@ jobs:
     name: "Docker Build"
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-build]
-    if: github.ref == 'refs/heads/main'
+    # Valide les images sur les PR (filet contre un Dockerfile cassé) ET sur main.
+    # Les images ne sont que construites (`-t ...:ci`), jamais poussées.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 

@@ -78,7 +78,6 @@ const FLAGS: Record<string, FeatureFlag> = {
 
 // Cache en mémoire avec TTL
 const cache = new Map<string, { value: boolean; expiresAt: number }>();
-const CACHE_TTL_MS = 60_000; // 1 minute
 
 // ── API publique ─────────────────────────────────────────────────────────
 

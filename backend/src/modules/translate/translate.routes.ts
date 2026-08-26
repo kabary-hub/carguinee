@@ -40,7 +40,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";
 import { translateText } from "./translate.service.js";
-import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
+import { extractUserId } from "../../lib/route-helpers.js";
 import { logger } from "../../lib/logger.js";
 
 export const translateRouter = Router();

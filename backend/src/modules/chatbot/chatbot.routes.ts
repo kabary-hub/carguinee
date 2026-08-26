@@ -10,7 +10,7 @@
 
 import { Router } from "express";
 import { z } from "zod";
-import { requireAuth, optionalAuth } from "../auth/auth.middleware.js";
+import { optionalAuth } from "../auth/auth.middleware.js";
 import { handleRouteError } from "../../lib/route-helpers.js";
 import {
   initChatSession,

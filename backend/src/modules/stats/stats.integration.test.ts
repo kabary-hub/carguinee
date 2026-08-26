@@ -108,7 +108,9 @@ describe('Stats API — occupancy rate', () => {
   });
 
   it('should return 0 for no bookings', () => {
-    const occupancy = Math.round((0 / 30) * 100);
+    const bookedDays = 0;
+    const totalDays = 30;
+    const occupancy = Math.round((bookedDays / totalDays) * 100);
     assert.equal(occupancy, 0);
   });
 

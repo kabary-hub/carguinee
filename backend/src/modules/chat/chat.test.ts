@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 // ── Chat module unit tests ────────────────────────────────────────────────
@@ -26,7 +26,6 @@ const PATTERNS = [
 ];
 
 function matchPattern(text: string) {
-  const normalized = normalizeText(text);
   return PATTERNS.find(p => p.patterns.some(r => r.test(text)));
 }
 

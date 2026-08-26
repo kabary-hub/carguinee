@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../auth/auth.middleware.js";
 import { prisma } from "../../lib/prisma.js";
-import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
+import { extractUserId } from "../../lib/route-helpers.js";
 import { cached } from "../../lib/cache.js";
 
 export const statsRouter = Router();
@@ -271,7 +271,7 @@ statsRouter.get("/", requireAuth, async (request, response) => {
         },
       });
     }
-  } catch (error) {
+  } catch {
     return { status: "error", message: "Erreur lors du calcul des statistiques." } as const;
   }
   });

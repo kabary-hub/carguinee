@@ -31,7 +31,7 @@ async function main() {
     create: { phone: "+224620980118", email: "proprietaire@carguinee.local", firstName: "Mamadou", lastName: "Camara", role: "PROPRIETAIRE", passwordHash, isPhoneVerified: true },
   });
 
-  const client = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { phone: "+224620980119" },
     update: { role: "CLIENT", passwordHash, firstName: "Ibrahima", lastName: "Diallo", email: "client@carguinee.local" },
     create: { phone: "+224620980119", email: "client@carguinee.local", firstName: "Ibrahima", lastName: "Diallo", role: "CLIENT", passwordHash, isPhoneVerified: true },
