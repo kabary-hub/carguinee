@@ -1,0 +1,1061 @@
+{
+  "info": {
+    "name": "CarGuinée API",
+    "description": "Collection complète de l'API CarGuinée — Plateforme de location & vente de véhicules en Guinée.\n\nBase URL : http://localhost:3000/api\n\n# Authentification\nLa plupart des routes nécessitent un token JWT.\n1. Utiliser `POST /api/auth/login` pour obtenir le token\n2. Le token est automatiquement stocké dans la variable `{{token}}`\n3. Les routes protégées l'utilisent via le header `Authorization: Bearer {{token}}`\n\n# Variables\n- `{{baseUrl}}` = http://localhost:3000/api\n- `{{token}}` = JWT token (automatiquement défini après login)\n- `{{vehicleId}}` = ID d'un véhicule\n- `{{bookingId}}` = ID d'une réservation\n- `{{userId}}` = ID d'un utilisateur",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api" },
+    { "key": "token", "value": "" },
+    { "key": "vehicleId", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Authentification",
+      "item": [
+        {
+          "name": "Inscription",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Amadou\",\n  \"lastName\": \"Diallo\",\n  \"phone\": \"+2246201234567\",\n  \"password\": \"SecurePass123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Connexion",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2246201234567\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "var jsonData = pm.response.json();",
+                    "if (jsonData.data && jsonData.data.token) {",
+                    "  pm.environment.set('token', jsonData.data.token);",
+                    "  console.log('Token sauvegardé');",
+                    "}"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Profil utilisateur (GET /me)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Modifier profil (PATCH /me)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/auth/me",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Amadou\",\n  \"lastName\": \"Diallo\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Changer mot de passe",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/change-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"SecurePass123!\",\n  \"newPassword\": \"NewSecurePass456!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mot de passe oublié",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2246201234567\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Vérifier code réinitialisation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/verify-reset-code",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2246201234567\",\n  \"code\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Réinitialiser mot de passe",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/reset-password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2246201234567\",\n  \"code\": \"123456\",\n  \"newPassword\": \"ResetPass789!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Déconnexion",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        },
+        {
+          "name": "CSRF Refresh",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/csrf-refresh"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚗 Véhicules",
+      "item": [
+        {
+          "name": "Liste véhicules (publiques)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/vehicles?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["vehicles"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "brand", "value": "", "disabled": true },
+                { "key": "minPrice", "value": "", "disabled": true },
+                { "key": "maxPrice", "value": "", "disabled": true },
+                { "key": "commune", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Détails véhicule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Mes véhicules (propriétaire)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vehicles/mine"
+          }
+        },
+        {
+          "name": "Créer un véhicule",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/vehicles",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brand\": \"Toyota\",\n  \"model\": \"Hilux\",\n  \"year\": 2022,\n  \"pricePerDay\": 150000,\n  \"commune\": \"Ratoma\",\n  \"quartier\": \"Kipé\",\n  \"description\": \"Pick-up en excellent état\",\n  \"seats\": 5,\n  \"fuelType\": \"Diesel\",\n  \"transmission\": \"Manuelle\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Modifier un véhicule",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pricePerDay\": 120000\n}"
+            }
+          }
+        },
+        {
+          "name": "Archiver un véhicule",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/archive"
+          }
+        },
+        {
+          "name": "Restaurer un véhicule",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/restore"
+          }
+        },
+        {
+          "name": "Soumettre pour validation",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/submit"
+          }
+        },
+        {
+          "name": "Approuver (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/approve"
+          }
+        },
+        {
+          "name": "Rejeter (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/reject",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Photos de mauvaise qualité\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Uploader photo",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/photos",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "photos", "type": "file", "src": "/path/to/photo.jpg" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Supprimer photo",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/vehicles/{{vehicleId}}/photos/{{photoId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Réservations",
+      "item": [
+        {
+          "name": "Créer réservation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/bookings",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-09-05\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mes réservations (client)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/bookings/mine"
+          }
+        },
+        {
+          "name": "Réservations reçues (propriétaire)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/bookings/owner"
+          }
+        },
+        {
+          "name": "Confirmer dépôt caution",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/deposit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmed\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Changer statut réservation",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/status",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💳 Paiements",
+      "item": [
+        {
+          "name": "Initier paiement OM",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"amount\": 150000,\n  \"phone\": \"+2246201234567\",\n  \"method\": \"ORANGE_MONEY\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Vérifier statut paiement",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payments/{{paymentId}}/status"
+          }
+        },
+        {
+          "name": "Paiement boost",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/boost",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"level\": \"PREMIUM\",\n  \"phone\": \"+2246201234567\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Callback Orange Money (webhook)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payments/callback",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionId\": \"OM-xxx\",\n  \"status\": \"SUCCESS\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Historique paiements",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payments/history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 Messages & Chat",
+      "item": [
+        {
+          "name": "Mes conversations",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/messages/conversations"
+          }
+        },
+        {
+          "name": "Créer conversation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/messages/conversations",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"{{userId}}\",\n  \"vehicleId\": \"{{vehicleId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Messages d'une conversation",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/messages/conversations/{{conversationId}}/messages?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Envoyer message",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/messages/conversations/{{conversationId}}/messages",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Bonjour, je suis intéressé par votre véhicule\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Nombre messages non lus",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/messages/unread-count"
+          }
+        },
+        {
+          "name": "Marquer message comme lu",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/messages/messages/{{messageId}}"
+          }
+        },
+        {
+          "name": "Supprimer message",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/messages/messages/{{messageId}}"
+          }
+        },
+        {
+          "name": "Conversations admin",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/messages/admin/conversations"
+          }
+        },
+        {
+          "name": "Messages admin (par conversation)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/messages/admin/conversations/{{conversationId}}/messages"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🤖 Chatbot",
+      "item": [
+        {
+          "name": "Créer session chatbot",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/chatbot/session",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"language\": \"fr\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Envoyer message chatbot",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/chatbot/message",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"session-xxx\",\n  \"message\": \"Bonjour, comment réserver un véhicule ?\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⭐ Favoris",
+      "item": [
+        {
+          "name": "Ajouter aux favoris",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/favorites",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Retirer des favoris",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/favorites/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Mes favoris",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/favorites"
+          }
+        },
+        {
+          "name": "Vérifier si favori",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/favorites/check/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Vérification batch favoris",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/favorites/check-batch?vehicleIds=id1,id2,id3"
+          }
+        }
+      ]
+    },
+    {
+      "name": "⭐ Fidélité",
+      "item": [
+        {
+          "name": "Mes points fidélité",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/loyalty/points"
+          }
+        },
+        {
+          "name": "Historique points",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/loyalty/history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Statistiques (propriétaire)",
+      "item": [
+        {
+          "name": "Dashboard stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stats?period=30d",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"],
+              "query": [
+                { "key": "period", "value": "30d", "description": "7d, 30d, 6m, 1y" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📢 Boost",
+      "item": [
+        {
+          "name": "Plans disponibles",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/boosting/plans"
+          }
+        },
+        {
+          "name": "Activer boost",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/boosting/activate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"level\": \"PREMIUM\",\n  \"paymentId\": \"payment-xxx\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Boost d'un véhicule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/boosting/vehicle/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Mes boosts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/boosting/my-boosts"
+          }
+        },
+        {
+          "name": "Annuler boost",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/boosting/cancel/{{boostId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Avis",
+      "item": [
+        {
+          "name": "Créer un avis",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/reviews",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"rating\": 5,\n  \"comment\": \"Excellent véhicule, très propre !\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Avis d'un véhicule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/reviews/vehicle/{{vehicleId}}"
+          }
+        },
+        {
+          "name": "Avis d'un utilisateur",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/reviews/user/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📄 Contrats",
+      "item": [
+        {
+          "name": "Voir contrat",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/contracts/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Générer contrat",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/contracts/{{bookingId}}/generate"
+          }
+        },
+        {
+          "name": "Signer contrat",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/contracts/{{bookingId}}/sign"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Notifications",
+      "item": [
+        {
+          "name": "Mes notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/notifications"
+          }
+        },
+        {
+          "name": "Nombre non lues",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/notifications/unread-count"
+          }
+        },
+        {
+          "name": "Marquer comme lu",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/notifications/{{notificationId}}/read"
+          }
+        },
+        {
+          "name": "Tout marquer comme lu",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/notifications/read-all"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Demandes propriétaire",
+      "item": [
+        {
+          "name": "Demander le rôle propriétaire",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/owner-requests",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivation\": \"Je souhaite louer mes véhicules professionnels\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mes demandes",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/owner-requests/me"
+          }
+        },
+        {
+          "name": "Annuler demande",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/owner-requests/{{requestId}}/cancel"
+          }
+        },
+        {
+          "name": "Demandes en attente (admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/owner-requests/pending"
+          }
+        },
+        {
+          "name": "Approuver demande (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/owner-requests/{{requestId}}/approve"
+          }
+        },
+        {
+          "name": "Rejeter demande (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/owner-requests/{{requestId}}/reject",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Documents non fournis\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📢 Signalements",
+      "item": [
+        {
+          "name": "Créer signalement",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/reports",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetId\": \"{{vehicleId}}\",\n  \"targetType\": \"VEHICLE\",\n  \"reason\": \"FAKE_LISTING\",\n  \"description\": \"Le véhicule n'existe pas\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Liste signalements (admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/reports?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "reports"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "status", "value": "PENDING", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Résoudre signalement (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/reports/{{reportId}}/resolve"
+          }
+        },
+        {
+          "name": "Bannir utilisateur signalé (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/reports/{{reportId}}/ban-user"
+          }
+        },
+        {
+          "name": "Suspendre véhicule signalé (admin)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/reports/{{reportId}}/suspend-vehicle"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏷️ Parrainage",
+      "item": [
+        {
+          "name": "Générer code parrainage",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/referrals/generate"
+          }
+        },
+        {
+          "name": "Mes stats parrainage",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/referrals/stats"
+          }
+        },
+        {
+          "name": "Historique parrainages",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/referrals/history"
+          }
+        },
+        {
+          "name": "Appliquer code parrainage",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/referrals/discount",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"REF-ABCDEF\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌐 Traduction",
+      "item": [
+        {
+          "name": "Traduire message",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/translate-message",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Bonjour, comment allez-vous ?\",\n  \"targetLang\": \"en\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🛡️ Administration",
+      "item": [
+        {
+          "name": "Dashboard admin",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/stats"
+          }
+        },
+        {
+          "name": "Liste utilisateurs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/users?page=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Détails utilisateur",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Changer rôle utilisateur",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/users/{{userId}}/role",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"PROPRIETAIRE\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Activer/Désactiver utilisateur",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/users/{{userId}}/toggle-active"
+          }
+        },
+        {
+          "name": "Bannir utilisateur",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/users/{{userId}}/ban",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isBanned\": true,\n  \"reason\": \"Comportement inapproprié\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Supprimer utilisateur",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/admin/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Modération (demandes owner)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/moderation"
+          }
+        },
+        {
+          "name": "Réservations admin",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/bookings?page=1&pageSize=10"
+          }
+        },
+        {
+          "name": "Supprimer réservation",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/admin/bookings/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Notifications admin",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/notifications"
+          }
+        },
+        {
+          "name": "Favoris admin",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/favorites"
+          }
+        },
+        {
+          "name": "Avis admin",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/reviews"
+          }
+        },
+        {
+          "name": "Feature Flags (liste)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/feature-flags"
+          }
+        },
+        {
+          "name": "Créer Feature Flag",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/admin/feature-flags",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"new_chat_ui\",\n  \"enabled\": true,\n  \"description\": \"Nouvelle interface de chat\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Toggle Feature Flag",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/feature-flags/{{flagKey}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": false\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 RGPD",
+      "item": [
+        {
+          "name": "Désactiver compte",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/deactivate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Je souhaite supprimer mon compte\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Demander réactivation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/request-reactivation",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+2246201234567\",\n  \"reason\": \"Je souhaite réactiver mon compte\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Exporter mes données",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/export-data"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📈 Métriques",
+      "item": [
+        {
+          "name": "Métriques serveur",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:3000/metrics"
+          }
+        },
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:3000/metrics/health"
+          }
+        }
+      ]
+    }
+  ]
+}
