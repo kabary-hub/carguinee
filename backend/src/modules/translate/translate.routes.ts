@@ -1,3 +1,41 @@
+/**
+ * @swagger
+ * /api/translate-message:
+ *   post:
+ *     tags: [Translate]
+ *     summary: Traduire un texte
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [text, targetLang]
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 maxLength: 5000
+ *               targetLang:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 5
+ *                 example: "fr"
+ *               sourceLang:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 5
+ *                 default: "auto"
+ *     responses:
+ *       200:
+ *         description: Texte traduit
+ *       400:
+ *         description: Données invalides
+ *       502:
+ *         description: Erreur du service de traduction
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";

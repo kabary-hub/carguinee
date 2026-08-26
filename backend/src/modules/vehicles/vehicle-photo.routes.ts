@@ -1,3 +1,56 @@
+/**
+ * @swagger
+ * /api/vehicles/{id}/photos:
+ *   post:
+ *     tags: [Vehicles - Photos]
+ *     summary: Ajouter des photos à un véhicule
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [photos]
+ *             properties:
+ *               photos:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 maxItems: 8
+ *     responses:
+ *       201:
+ *         description: Photos ajoutées
+ *       400:
+ *         description: Aucune photo fournie
+ *
+ * /api/vehicles/{id}/photos/{photoId}:
+ *   delete:
+ *     tags: [Vehicles - Photos]
+ *     summary: Supprimer une photo
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: path
+ *         name: photoId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Photo supprimée
+ */
+
 import { Router } from "express";
 import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
 import {
@@ -59,17 +112,15 @@ vehiclePhotoRouter.delete(
     const photoId = getParam(request.params.photoId);
 
     if (!vehicleId || !photoId) {
-      response.status(400).json({ status: "error", message: "Identifiants invalides." });
+      response.status(400).json({ status: "error", message: "Paramètres invalides." });
       return;
     }
 
     try {
-      const result = await deleteVehiclePhoto(vehicleId, photoId, ownerId, request.auth?.role);
-      response.json({ status: "ok", data: result });
+      await deleteVehiclePhoto(vehicleId, photoId, ownerId);
+      response.json({ status: "ok", message: "Photo supprimée." });
     } catch (error) {
-      handleRouteError(error, response, "Suppression impossible.", 404);
+      handleRouteError(error, response, "Suppression impossible.");
     }
   },
 );
-
-vehiclePhotoRouter.use(vehiclePhotoUploadErrorHandler);

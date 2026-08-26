@@ -1,3 +1,46 @@
+/**
+ * @swagger
+ * /api/owner-requests:
+ *   post:
+ *     tags: [Owner Requests]
+ *     summary: Demander le rôle propriétaire
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Demande créée
+ * /api/owner-requests/me:
+ *   get:
+ *     tags: [Owner Requests]
+ *     summary: Mes demandes de propriétaire
+ *     security:
+ *       - BearerAuth: []
+ * /api/owner-requests/{id}/cancel:
+ *   patch:
+ *     tags: [Owner Requests]
+ *     summary: Annuler une demande
+ *     security:
+ *       - BearerAuth: []
+ * /api/owner-requests/pending:
+ *   get:
+ *     tags: [Owner Requests]
+ *     summary: Demandes en attente (admin)
+ *     security:
+ *       - BearerAuth: []
+ * /api/owner-requests/{id}/approve:
+ *   patch:
+ *     tags: [Owner Requests]
+ *     summary: Approuver une demande (admin)
+ *     security:
+ *       - BearerAuth: []
+ * /api/owner-requests/{id}/reject:
+ *   patch:
+ *     tags: [Owner Requests]
+ *     summary: Rejeter une demande (admin)
+ *     security:
+ *       - BearerAuth: []
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
@@ -20,13 +63,8 @@ ownerRequestRouter.post("/", requireAuth, async (request, response) => {
   if (!userId) return;
 
   const parsed = ownerRequestSchema.safeParse(request.body);
-
   if (!parsed.success) {
-    response.status(400).json({
-      status: "error",
-      message: "Données de demande invalides.",
-      details: parsed.error.flatten(),
-    });
+    response.status(400).json({ status: "error", message: "Données invalides.", details: parsed.error.flatten() });
     return;
   }
 
@@ -41,7 +79,6 @@ ownerRequestRouter.post("/", requireAuth, async (request, response) => {
 ownerRequestRouter.get("/me", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
-
   const ownerRequests = await listMyOwnerRequests(userId);
   response.json({ status: "ok", data: ownerRequests });
 });
@@ -49,98 +86,46 @@ ownerRequestRouter.get("/me", requireAuth, async (request, response) => {
 ownerRequestRouter.patch("/:id/cancel", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
-
-  const parsedId = requestIdSchema.safeParse(request.params.id);
-
-  if (!parsedId.success) {
-    response.status(400).json({ status: "error", message: "Identifiant de demande invalide." });
-    return;
-  }
-
+  const parsed = requestIdSchema.safeParse(request.params.id);
+  if (!parsed.success) { response.status(400).json({ status: "error", message: "ID invalide." }); return; }
   try {
-    const ownerRequest = await cancelOwnerRequest(userId, parsedId.data);
-    response.json({ status: "ok", data: ownerRequest });
+    await cancelOwnerRequest(userId, parsed.data);
+    response.json({ status: "ok", message: "Demande annulée." });
   } catch (error) {
-    handleRouteError(error, response, "Annulation impossible.", 404);
+    handleRouteError(error, response, "Annulation impossible.");
   }
 });
 
-ownerRequestRouter.get(
-  "/admin/pending",
-  requireAuth,
-  requireRoles("ADMIN"),
-  async (_request, response) => {
-    const ownerRequests = await listPendingOwnerRequests();
-    response.json({ status: "ok", data: ownerRequests });
-  },
-);
+ownerRequestRouter.get("/pending", requireAuth, requireRoles("ADMIN"), async (_request, response) => {
+  try {
+    const requests = await listPendingOwnerRequests();
+    response.json({ status: "ok", data: requests });
+  } catch (error) {
+    handleRouteError(error, response, "Erreur de chargement.", 500);
+  }
+});
 
-ownerRequestRouter.patch(
-  "/admin/:id/approve",
-  requireAuth,
-  requireRoles("ADMIN"),
-  async (request, response) => {
-    const adminId = extractUserId(request, response);
-    if (!adminId) return;
+ownerRequestRouter.patch("/:id/approve", requireAuth, requireRoles("ADMIN"), async (request, response) => {
+  const parsed = requestIdSchema.safeParse(request.params.id);
+  if (!parsed.success) { response.status(400).json({ status: "error", message: "ID invalide." }); return; }
+  try {
+    const adminId = request.auth!.userId;
+    await approveOwnerRequest(parsed.data, adminId);
+    response.json({ status: "ok", message: "Demande approuvée." });
+  } catch (error) {
+    handleRouteError(error, response, "Approbation impossible.");
+  }
+});
 
-    const parsedId = requestIdSchema.safeParse(request.params.id);
-
-    if (!parsedId.success) {
-      response.status(400).json({ status: "error", message: "Identifiant invalide." });
-      return;
-    }
-
-    try {
-      const ownerRequest = await approveOwnerRequest(parsedId.data, adminId);
-      response.json({ status: "ok", data: ownerRequest });
-    } catch (error) {
-      handleRouteError(error, response, "Approbation impossible.", 404);
-    }
-  },
-);
-
-ownerRequestRouter.patch(
-  "/admin/:id/reject",
-  requireAuth,
-  requireRoles("ADMIN"),
-  async (request, response) => {
-    const adminId = extractUserId(request, response);
-    if (!adminId) return;
-
-    const parsedId = requestIdSchema.safeParse(request.params.id);
-    const reason = z
-      .object({ rejectionReason: z.string().trim().min(1).max(1000) })
-      .safeParse(request.body);
-
-    if (!parsedId.success) {
-      response.status(400).json({
-        status: "error",
-        message: "Identifiant invalide.",
-      });
-      return;
-    }
-
-    if (!reason.success) {
-      response.status(400).json({
-        status: "error",
-        message: "Le motif du rejet est obligatoire.",
-      });
-      return;
-    }
-
-    try {
-      const ownerRequest = await rejectOwnerRequest(
-        parsedId.data,
-        adminId,
-        reason.data.rejectionReason,
-      );
-
-      response.json({
-        status: "ok",
-        data: ownerRequest,
-      });
-    } catch (error) {
-      handleRouteError(error, response, "Rejet impossible.", 404);
-    }
-  },
-);
+ownerRequestRouter.patch("/:id/reject", requireAuth, requireRoles("ADMIN"), async (request, response) => {
+  const parsed = requestIdSchema.safeParse(request.params.id);
+  if (!parsed.success) { response.status(400).json({ status: "error", message: "ID invalide." }); return; }
+  try {
+    const adminId = request.auth!.userId;
+    const reason = (request.body as any)?.reason;
+    await rejectOwnerRequest(parsed.data, adminId, reason);
+    response.json({ status: "ok", message: "Demande rejetée." });
+  } catch (error) {
+    handleRouteError(error, response, "Rejet impossible.");
+  }
+});

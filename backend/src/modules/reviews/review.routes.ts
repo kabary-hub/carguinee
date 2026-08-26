@@ -1,3 +1,73 @@
+/**
+ * @swagger
+ * /api/reviews:
+ *   post:
+ *     tags: [Reviews]
+ *     summary: Créer un avis
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [vehicleId, rating]
+ *             properties:
+ *               vehicleId:
+ *                 type: string
+ *                 format: uuid
+ *               rating:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *               comment:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Avis créé
+ *       400:
+ *         description: Données invalides
+ *
+ * /api/reviews/vehicle/{vehicleId}:
+ *   get:
+ *     tags: [Reviews]
+ *     summary: Avis d'un véhicule
+ *     parameters:
+ *       - in: path
+ *         name: vehicleId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, default: 10 }
+ *     responses:
+ *       200:
+ *         description: Liste paginée des avis
+ *
+ * /api/reviews/user/{userId}:
+ *   get:
+ *     tags: [Reviews]
+ *     summary: Avis d'un utilisateur
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, default: 10 }
+ *     responses:
+ *       200:
+ *         description: Liste paginée des avis
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";

@@ -1,15 +1,32 @@
 /**
- * Routes API — Parrainage et Points de fidélité
- *
- * POST   /api/referrals/generate   → Générer un code de parrainage
- * GET    /api/referrals/stats      → Statistiques de parrainage
- * GET    /api/referrals/history    → Historique des points
- * POST   /api/referrals/apply      → Appliquer un code (utilisé à l'inscription)
- * POST   /api/referrals/discount   → Calculer/appliquer une réduction
+ * @swagger
+ * /api/referrals/generate:
+ *   post:
+ *     tags: [Referrals]
+ *     summary: Générer un code de parrainage
+ *     security:
+ *       - BearerAuth: []
+ * /api/referrals/stats:
+ *   get:
+ *     tags: [Referrals]
+ *     summary: Statistiques de parrainage
+ *     security:
+ *       - BearerAuth: []
+ * /api/referrals/history:
+ *   get:
+ *     tags: [Referrals]
+ *     summary: Historique des points
+ *     security:
+ *       - BearerAuth: []
+ * /api/referrals/discount:
+ *   post:
+ *     tags: [Referrals]
+ *     summary: Calculer la réduction disponible
+ *     security:
+ *       - BearerAuth: []
  */
 
 import { Router } from "express";
-import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";
 import { handleRouteError } from "../../lib/route-helpers.js";
 import {
@@ -21,7 +38,6 @@ import {
 
 export const referralRouter = Router();
 
-// ── POST /api/referrals/generate — Générer un code ──────────────────────
 referralRouter.post("/generate", requireAuth, async (request, response) => {
   try {
     const userId = request.auth!.userId;
@@ -32,7 +48,6 @@ referralRouter.post("/generate", requireAuth, async (request, response) => {
   }
 });
 
-// ── GET /api/referrals/stats — Statistiques ──────────────────────────────
 referralRouter.get("/stats", requireAuth, async (request, response) => {
   try {
     const userId = request.auth!.userId;
@@ -43,46 +58,23 @@ referralRouter.get("/stats", requireAuth, async (request, response) => {
   }
 });
 
-// ── GET /api/referrals/history — Historique des points ───────────────────
 referralRouter.get("/history", requireAuth, async (request, response) => {
   try {
     const userId = request.auth!.userId;
     const page = Number(request.query.page) || 1;
-    const pageSize = Math.min(Number(request.query.pageSize) || 20, 50);
-    const result = await getLoyaltyHistory(userId, page, pageSize);
-    response.json({ status: "ok", data: result });
+    const history = await getLoyaltyHistory(userId, page);
+    response.json({ status: "ok", data: history });
   } catch (error) {
     handleRouteError(error, response, "Erreur de chargement.", 500);
   }
 });
 
-// ── POST /api/referrals/discount — Calculer réduction ────────────────────
-const discountSchema = z.object({
-  bookingAmount: z.number().int().positive(),
-});
-
 referralRouter.post("/discount", requireAuth, async (request, response) => {
-  const parsed = discountSchema.safeParse(request.body);
-  if (!parsed.success) {
-    response.status(400).json({ status: "error", message: "Montant invalide." });
-    return;
-  }
-
   try {
     const userId = request.auth!.userId;
     const discount = await calculateDiscount(userId);
-    const discountAmount = Math.floor((parsed.data.bookingAmount * discount.discountPercent) / 100);
-
-    response.json({
-      status: "ok",
-      data: {
-        ...discount,
-        originalAmount: parsed.data.bookingAmount,
-        discountAmount,
-        finalAmount: parsed.data.bookingAmount - discountAmount,
-      },
-    });
+    response.json({ status: "ok", data: discount });
   } catch (error) {
-    handleRouteError(error, response, "Erreur de calcul.", 500);
+    handleRouteError(error, response, "Impossible de calculer la réduction.");
   }
 });

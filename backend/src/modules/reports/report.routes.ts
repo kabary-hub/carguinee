@@ -1,141 +1,117 @@
+/**
+ * @swagger
+ * /api/reports:
+ *   post:
+ *     tags: [Reports]
+ *     summary: Créer un signalement
+ *     security:
+ *       - BearerAuth: []
+ * /api/admin/reports:
+ *   get:
+ *     tags: [Admin - Reports]
+ *     summary: Lister les signalements (admin)
+ *     security:
+ *       - BearerAuth: []
+ * /api/admin/reports/{id}/resolve:
+ *   patch:
+ *     tags: [Admin - Reports]
+ *     summary: Résoudre un signalement
+ *     security:
+ *       - BearerAuth: []
+ * /api/admin/reports/{id}/ban:
+ *   post:
+ *     tags: [Admin - Reports]
+ *     summary: Bannir l'utilisateur signalé
+ *     security:
+ *       - BearerAuth: []
+ * /api/admin/reports/{id}/suspend:
+ *   post:
+ *     tags: [Admin - Reports]
+ *     summary: Suspendre le véhicule signalé
+ *     security:
+ *       - BearerAuth: []
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
 import { createReport, listReports, resolveReport, banReportedUser, suspendReportedVehicle } from "./report.service.js";
 import { extractUserId, handleRouteError, paginationQuery } from "../../lib/route-helpers.js";
 
-// ── Schémas Zod pour les query params ────────────────────────────────────────
 const reportStatusEnum = z.enum(["PENDING", "RESOLVED", "DISMISSED"]);
-const reportListQuerySchema = paginationQuery.extend({
-  status: reportStatusEnum.optional(),
-});
+const reportListQuerySchema = paginationQuery.extend({ status: reportStatusEnum.optional() });
 
 export const reportRouter = Router();
 
-// ── Créer un signalement (utilisateur connecté) ──────────────────────────────
 reportRouter.post("/", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
 
-  const parsed = z
-    .object({
-      targetId: z.string().uuid(),
-      targetType: z.enum(["VEHICLE", "USER", "BOOKING"]),
-      reason: z.string().trim().min(1).max(200),
-      description: z.string().trim().max(2000).optional(),
-    })
-    .safeParse(request.body);
+  const parsed = z.object({
+    targetId: z.string().uuid(),
+    targetType: z.enum(["VEHICLE", "USER", "BOOKING"]),
+    reason: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(2000).optional(),
+  }).safeParse(request.body);
 
   if (!parsed.success) {
-    response.status(400).json({
-      status: "error",
-      message: "Données de signalement invalides.",
-      details: parsed.error.flatten(),
-    });
+    response.status(400).json({ status: "error", message: "Données invalides.", details: parsed.error.flatten() });
     return;
   }
 
   try {
-    const report = await createReport(
-      userId,
-      parsed.data.targetId,
-      parsed.data.targetType,
-      parsed.data.reason,
-      parsed.data.description,
-    );
+    const report = await createReport(userId, parsed.data.targetId, parsed.data.targetType, parsed.data.reason, parsed.data.description);
     response.status(201).json({ status: "ok", data: report });
   } catch (error) {
     handleRouteError(error, response, "Impossible de créer le signalement.");
   }
 });
 
-// ── Routes admin ──────────────────────────────────────────────────────────────
-const adminReportRouter = Router();
-adminReportRouter.use(requireAuth, requireRoles("ADMIN"));
+export const adminReportRouter = Router();
 
-// Lister les signalements
-adminReportRouter.get("/", async (request, response) => {
-  const parsed = reportListQuerySchema.safeParse(request.query);
-  if (!parsed.success) {
-    response.status(400).json({
-      status: "error",
-      message: "Paramètres invalides.",
-      details: parsed.error.flatten(),
-    });
-    return;
-  }
-
-  const { status, page, pageSize } = parsed.data;
-
+adminReportRouter.get("/", requireAuth, requireRoles("ADMIN"), async (request, response) => {
+  const { page, pageSize } = reportListQuerySchema.parse(request.query);
+  const status = request.query.status as string | undefined;
   try {
-    const result = await listReports({ status, page, pageSize });
+    const result = await listReports({ page, pageSize, status });
     response.json({ status: "ok", data: result });
   } catch (error) {
-    handleRouteError(error, response, "Erreur lors de la récupération des signalements.", 500);
+    handleRouteError(error, response, "Erreur de chargement.", 500);
   }
 });
 
-// Résoudre un signalement
-adminReportRouter.patch("/:id/resolve", async (request, response) => {
-  const adminId = extractUserId(request, response);
-  if (!adminId) return;
-
-  const parsedId = z.string().uuid().safeParse(request.params.id);
-  const parsedBody = z
-    .object({ status: z.enum(["RESOLVED", "DISMISSED"]) })
-    .safeParse(request.body);
-
-  if (!parsedId.success || !parsedBody.success) {
-    response.status(400).json({ status: "error", message: "Données invalides." });
-    return;
-  }
-
+adminReportRouter.patch("/:id/resolve", requireAuth, requireRoles("ADMIN"), async (request, response) => {
+  const parsed = z.string().uuid().safeParse(request.params.id);
+  if (!parsed.success) { response.status(400).json({ status: "error", message: "ID invalide." }); return; }
   try {
-    const report = await resolveReport(parsedId.data, adminId, parsedBody.data.status);
-    response.json({ status: "ok", data: report });
+    const adminId = request.auth!.userId;
+    await resolveReport(parsed.data, adminId, "RESOLVED");
+    response.json({ status: "ok", message: "Signalement résolu." });
   } catch (error) {
-    handleRouteError(error, response, "Impossible de résoudre le signalement.");
+    handleRouteError(error, response, "Résolution impossible.");
   }
 });
 
-// Bannir l'utilisateur signalé
-adminReportRouter.patch("/:id/ban-user", async (request, response) => {
-  const adminId = extractUserId(request, response);
-  if (!adminId) return;
-
-  const parsedId = z.string().uuid().safeParse(request.params.id);
-
-  if (!parsedId.success) {
-    response.status(400).json({ status: "error", message: "Données invalides." });
-    return;
-  }
-
+adminReportRouter.post("/:id/ban", requireAuth, requireRoles("ADMIN"), async (request, response) => {
+  const parsed = z.string().uuid().safeParse(request.params.id);
+  if (!parsed.success) { response.status(400).json({ status: "error", message: "ID invalide." }); return; }
   try {
-    const report = await banReportedUser(parsedId.data, adminId);
-    response.json({ status: "ok", data: report });
+    const adminId = request.auth!.userId;
+    await banReportedUser(parsed.data, adminId);
+    response.json({ status: "ok", message: "Utilisateur banni." });
   } catch (error) {
-    handleRouteError(error, response, "Impossible de bannir l'utilisateur.");
+    handleRouteError(error, response, "Bannissement impossible.");
   }
 });
 
-// Suspendre le véhicule signalé
-adminReportRouter.patch("/:id/suspend-vehicle", async (request, response) => {
-  const adminId = extractUserId(request, response);
-  if (!adminId) return;
-
-  const parsedId = z.string().uuid().safeParse(request.params.id);
-
-  if (!parsedId.success) {
-    response.status(400).json({ status: "error", message: "Données invalides." });
-    return;
-  }
-
+adminReportRouter.post("/:id/suspend", requireAuth, requireRoles("ADMIN"), async (request, response) => {
+  const parsed = z.string().uuid().safeParse(request.params.id);
+  if (!parsed.success) { response.status(400).json({ status: "error", message: "ID invalide." }); return; }
   try {
-    const report = await suspendReportedVehicle(parsedId.data, adminId);
-    response.json({ status: "ok", data: report });
+    const adminId = request.auth!.userId;
+    await suspendReportedVehicle(parsed.data, adminId);
+    response.json({ status: "ok", message: "Véhicule suspendu." });
   } catch (error) {
-    handleRouteError(error, response, "Impossible de suspendre le véhicule.");
+    handleRouteError(error, response, "Suspension impossible.");
   }
 });
-
-export { adminReportRouter };

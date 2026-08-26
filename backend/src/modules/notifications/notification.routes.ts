@@ -1,3 +1,63 @@
+/**
+ * @swagger
+ * /api/notifications:
+ *   get:
+ *     tags: [Notifications]
+ *     summary: Liste des notifications
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: pageSize
+ *         schema: { type: integer, default: 20 }
+ *       - in: query
+ *         name: unreadOnly
+ *         schema: { type: boolean, default: false }
+ *     responses:
+ *       200:
+ *         description: Liste paginée des notifications
+ *
+ * /api/notifications/unread-count:
+ *   get:
+ *     tags: [Notifications]
+ *     summary: Nombre de notifications non lues
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Nombre de non lues
+ *
+ * /api/notifications/{id}/read:
+ *   patch:
+ *     tags: [Notifications]
+ *     summary: Marquer une notification comme lue
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Notification marquée comme lue
+ *       400:
+ *         description: ID invalide
+ *
+ * /api/notifications/read-all:
+ *   patch:
+ *     tags: [Notifications]
+ *     summary: Marquer toutes les notifications comme lues
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Toutes les notifications marquées comme lues
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";

@@ -1,3 +1,64 @@
+/**
+ * @swagger
+ * /api/contracts/{bookingId}:
+ *   get:
+ *     tags: [Contracts]
+ *     summary: Récupérer un contrat
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Contrat trouvé
+ *       404:
+ *         description: Contrat introuvable
+ *
+ * /api/contracts/{bookingId}/generate:
+ *   post:
+ *     tags: [Contracts]
+ *     summary: Générer un contrat PDF
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       201:
+ *         description: Contrat généré
+ *
+ * /api/contracts/{bookingId}/sign:
+ *   post:
+ *     tags: [Contracts]
+ *     summary: Signer électroniquement un contrat
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookingId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [role]
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [customer, owner]
+ *     responses:
+ *       200:
+ *         description: Contrat signé
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";

@@ -1,8 +1,26 @@
 /**
- * Routes API — Points de fidélité
+ * @swagger
+ * /api/loyalty/points:
+ *   get:
+ *     tags: [Loyalty]
+ *     summary: Solde de points de fidélité
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Solde de points
+ *       401:
+ *         description: Non authentifié
  *
- * GET    /api/loyalty/points    → Solde actuel de l'utilisateur
- * GET    /api/loyalty/history   → Historique des transactions
+ * /api/loyalty/history:
+ *   get:
+ *     tags: [Loyalty]
+ *     summary: Historique des transactions de fidélité
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Historique des transactions
  */
 
 import { Router } from "express";

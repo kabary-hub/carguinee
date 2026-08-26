@@ -1,3 +1,91 @@
+/**
+ * @swagger
+ * /api/favorites:
+ *   post:
+ *     tags: [Favorites]
+ *     summary: Ajouter un favori
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [vehicleId]
+ *             properties:
+ *               vehicleId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       201:
+ *         description: Favori ajouté
+ *       400:
+ *         description: ID invalide
+ *
+ *   get:
+ *     tags: [Favorites]
+ *     summary: Mes favoris
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des favoris
+ *
+ * /api/favorites/{vehicleId}:
+ *   delete:
+ *     tags: [Favorites]
+ *     summary: Supprimer un favori
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vehicleId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Favori supprimé
+ *
+ * /api/favorites/check/{vehicleId}:
+ *   get:
+ *     tags: [Favorites]
+ *     summary: Vérifier si un véhicule est en favori
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vehicleId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Résultat de la vérification
+ *
+ * /api/favorites/batch:
+ *   post:
+ *     tags: [Favorites]
+ *     summary: Vérifier plusieurs favoris d'un coup
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [vehicleIds]
+ *             properties:
+ *               vehicleIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *     responses:
+ *       200:
+ *         description: Map vehicleId → isFavorite
+ */
+
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../auth/auth.middleware.js";
@@ -56,7 +144,7 @@ favoriteRouter.get("/", requireAuth, async (request, response) => {
     const favorites = await listFavorites(userId);
     response.json({ status: "ok", data: favorites });
   } catch (error) {
-    handleRouteError(error, response, "Erreur lors de la récupération des favoris.", 500);
+    handleRouteError(error, response, "Erreur de chargement.", 500);
   }
 });
 
@@ -66,69 +154,44 @@ favoriteRouter.get("/check/:vehicleId", requireAuth, async (request, response) =
   if (!userId) return;
 
   const parsedId = z.string().uuid().safeParse(request.params.vehicleId);
-
   if (!parsedId.success) {
+    response.status(400).json({ status: "error", message: "ID invalide." });
+    return;
+  }
+
+  try {
+    const favorited = await isFavorite(userId, parsedId.data);
+    response.json({ status: "ok", data: { isFavorite: favorited } });
+  } catch (error) {
+    handleRouteError(error, response, "Erreur de vérification.", 500);
+  }
+});
+
+// ── Batch check ───────────────────────────────────────────────────────────────
+favoriteRouter.post("/batch", requireAuth, async (request, response) => {
+  const userId = extractUserId(request, response);
+  if (!userId) return;
+
+  const parsed = z.object({ vehicleIds: z.array(z.string().uuid()) }).safeParse(request.body);
+  if (!parsed.success) {
     response.status(400).json({ status: "error", message: "Données invalides." });
     return;
   }
 
-  const favorited = await isFavorite(userId, parsedId.data);
-  response.json({ status: "ok", data: { isFavorite: favorited } });
-});
+  try {
+    const favorites = await prisma.favorite.findMany({
+      where: { userId, vehicleId: { in: parsed.data.vehicleIds } },
+      select: { vehicleId: true },
+    });
 
-/**
- * @swagger
- * /api/favorites/check-batch:
- *   get:
- *     tags: [Favorites]
- *     summary: Vérifier les favoris pour plusieurs véhicules
- *     security:
- *       - BearerAuth: []
- *     parameters:
- *       - in: query
- *         name: ids
- *         required: true
- *         schema:
- *           type: string
- *         description: IDs séparés par des virgules (max 50)
- *     responses:
- *       200:
- *         description: Map vehicleId → boolean
- */
-favoriteRouter.get("/check-batch", requireAuth, async (request, response) => {
-  const userId = extractUserId(request, response);
-  if (!userId) return;
+    const favSet = new Set(favorites.map((f) => f.vehicleId));
+    const result: Record<string, boolean> = {};
+    for (const id of parsed.data.vehicleIds) {
+      result[id] = favSet.has(id);
+    }
 
-  const batchQuerySchema = z.object({
-    ids: z.string().min(1),
-  });
-  const parsed = batchQuerySchema.safeParse(request.query);
-  if (!parsed.success) {
-    response.status(400).json({ status: "error", message: "Paramètre 'ids' requis (IDs séparés par des virgules)." });
-    return;
+    response.json({ status: "ok", data: result });
+  } catch (error) {
+    handleRouteError(error, response, "Erreur de vérification.", 500);
   }
-
-  const vehicleIds = parsed.data.ids
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    .slice(0, 50); // max 50
-
-  if (vehicleIds.length === 0) {
-    response.json({ status: "ok", data: {} });
-    return;
-  }
-
-  const rows = await prisma.favorite.findMany({
-    where: { userId, vehicleId: { in: vehicleIds } },
-    select: { vehicleId: true },
-  });
-
-  const favoritedIds = new Set(rows.map((r) => r.vehicleId));
-  const result: Record<string, boolean> = {};
-  for (const id of vehicleIds) {
-    result[id] = favoritedIds.has(id);
-  }
-
-  response.json({ status: "ok", data: result });
 });
