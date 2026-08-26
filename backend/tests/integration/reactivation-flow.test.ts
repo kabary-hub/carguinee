@@ -10,11 +10,13 @@
  *   6. L'utilisateur peut se reconnecter
  *
  * Ce test ecrit dans la base de donnees reelle (carguinee).
- * Un utilisateur de test unique est cree et nettoye a la fin.
+ * Isolation : `beforeEach(cleanup)` garantit une base propre avant CHAQUE test
+ * (independance a l'ordre d'execution + recuperation apres un test qui plante),
+ * et `after(cleanup)` supprime les donnees de test a la fin de la suite.
  */
 
 import assert from "node:assert/strict";
-import test from "node:test";
+import test, { beforeEach, after } from "node:test";
 import { prisma } from "../../src/lib/prisma.js";
 
 // ── Utilitaire : generer un numero unique pour ce test ───────────────────────
@@ -37,14 +39,16 @@ async function cleanup() {
   await prisma.user.deleteMany({ where: { phone: TEST_ADMIN_PHONE } });
 }
 
+// Nettoyage garanti et centralise : avant chaque test (isolation) et une fois
+// la suite terminee (pas de donnees de test residuelles en base).
+beforeEach(cleanup);
+after(cleanup);
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ── FLOW COMPLET : Desactivation -> Demande -> Acceptation -> Connexion ──────
 // ══════════════════════════════════════════════════════════════════════════════
 
 test("flow complet: desactivation -> demande reactivation -> admin accepte -> reconnexion", async () => {
-  // ── Etape 0 : Nettoyage initial ──
-  await cleanup();
-
   // ── Etape 1 : Inscription ──
   const { register } = await import("../../src/modules/auth/auth.service.js");
 
@@ -184,9 +188,6 @@ test("flow complet: desactivation -> demande reactivation -> admin accepte -> re
   assert.ok(loginAfterReactivation.accessToken, "La connexion reussit apres reactivation");
   assert.equal(loginAfterReactivation.user.isActive, true, "Le compte est actif");
   assert.equal(loginAfterReactivation.user.id, testUserId, "C'est le bon utilisateur");
-
-  // ── Etape 10 : Nettoyage ──
-  await cleanup();
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -194,8 +195,6 @@ test("flow complet: desactivation -> demande reactivation -> admin accepte -> re
 // ══════════════════════════════════════════════════════════════════════════════
 
 test("flow: demande de reactivation refusée - le compte reste desactive", async () => {
-  await cleanup();
-
   const { register, login, AccountDeactivatedError } = await import("../../src/modules/auth/auth.service.js");
 
   // Creer l'utilisateur et le desactiver
@@ -269,8 +268,6 @@ test("flow: demande de reactivation refusée - le compte reste desactive", async
     },
     "La connexion echoue toujours apres refus",
   );
-
-  await cleanup();
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -278,8 +275,6 @@ test("flow: demande de reactivation refusée - le compte reste desactive", async
 // ══════════════════════════════════════════════════════════════════════════════
 
 test("flow: double demande de reactivation - la deuxieme est rejetee", async () => {
-  await cleanup();
-
   const { register } = await import("../../src/modules/auth/auth.service.js");
 
   const regResult = await register({
@@ -328,8 +323,7 @@ test("flow: double demande de reactivation - la deuxieme est rejetee", async () 
     where: { userId: user.id, status: "PENDING" },
   });
   assert.equal(allPending.length, 2, "Les deux demandes existent (le controle doublon est dans la route HTTP)");
-
-  await cleanup();
+  assert.ok(req2.id, "La deuxieme demande a bien ete creee");
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -337,8 +331,6 @@ test("flow: double demande de reactivation - la deuxieme est rejetee", async () 
 // ══════════════════════════════════════════════════════════════════════════════
 
 test("flow: bannissement - le compte est desactive et la connexion echoue", async () => {
-  await cleanup();
-
   const { register, login, AccountBannedError } = await import("../../src/modules/auth/auth.service.js");
 
   const regResult = await register({
@@ -382,8 +374,6 @@ test("flow: bannissement - le compte est desactive et la connexion echoue", asyn
   // La logique de la route verifie isBanned et renvoie 403
   // On teste ici que le flag est bien set
   assert.equal(user.isBanned, true, "Le flag isBanned empeche la reactivation");
-
-  await cleanup();
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -391,8 +381,6 @@ test("flow: bannissement - le compte est desactive et la connexion echoue", asyn
 // ══════════════════════════════════════════════════════════════════════════════
 
 test("flow: debannissement - l'utilisateur peut se reconnecter", async () => {
-  await cleanup();
-
   const { register, login } = await import("../../src/modules/auth/auth.service.js");
 
   const regResult = await register({
@@ -423,8 +411,6 @@ test("flow: debannissement - l'utilisateur peut se reconnecter", async () => {
   const loginResult = await login({ phone: TEST_PHONE, password: TEST_PASSWORD });
   assert.ok(loginResult.accessToken, "La connexion reussit apres debannissement");
   assert.equal(loginResult.user.isBanned, false);
-
-  await cleanup();
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -432,8 +418,6 @@ test("flow: debannissement - l'utilisateur peut se reconnecter", async () => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 test("flow: admin peut lister les demandes de reactivation", async () => {
-  await cleanup();
-
   const { register } = await import("../../src/modules/auth/auth.service.js");
 
   const regResult = await register({
@@ -488,6 +472,4 @@ test("flow: admin peut lister les demandes de reactivation", async () => {
   assert.equal(rejected.length, 1, "1 demande REJECTED");
   assert.equal(rejected[0].id, req2.id);
   assert.equal(rejected[0].rejectionReason, "Non justifie");
-
-  await cleanup();
 });
