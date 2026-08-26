@@ -318,7 +318,7 @@ function ChatWindow({
 
   return (
     <AppShell>
-      <div className="flex h-[calc(100dvh-49px)] flex-col sm:h-[calc(100vh-52px)]">
+      <div className="flex h-[calc(100dvh-96px)] flex-col sm:h-[calc(100vh-96px)]">
         {/* Header */}
         <div className="flex-none border-b border-slate-200 px-3 py-2.5 sm:px-6 sm:py-3 dark:border-slate-800">
           <div className="flex items-center gap-2">
