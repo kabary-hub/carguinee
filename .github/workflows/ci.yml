@@ -56,6 +56,14 @@ jobs:
         working-directory: backend
         run: npx prisma migrate deploy
 
+      # Garde anti-dérive : la base produite par les migrations validées doit
+      # correspondre EXACTEMENT à schema.prisma. Empêche qu'une colonne poussée
+      # via `prisma db push` (jamais migrée) passe tsc mais casse à l'exécution.
+      # Sortie != 0 (2 = dérive détectée) → échec immédiat, avant tsc et les tests.
+      - name: Check for schema drift
+        working-directory: backend
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
       - name: Type check
         working-directory: backend
         run: npx tsc --noEmit
