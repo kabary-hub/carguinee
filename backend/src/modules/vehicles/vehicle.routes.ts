@@ -17,6 +17,7 @@ import {
   submitVehicleForValidation,
 } from "./vehicle.service.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
+import { cached, invalidateCache } from "../../lib/cache.js";
 
 export const vehicleRouter = Router();
 const idSchema = z.string().uuid();
@@ -69,7 +70,8 @@ vehicleRouter.get("/", async (request, response) => {
     return;
   }
 
-  const result = await listPublicVehicles(parsedQuery.data);
+  const cacheKey = `vehicles:list:${JSON.stringify(parsedQuery.data)}`;
+  const result = await cached(cacheKey, 60_000, () => listPublicVehicles(parsedQuery.data));
   response.json({ status: "ok", data: result });
 });
 
@@ -211,6 +213,7 @@ vehicleRouter.post(
 
     try {
       const vehicle = await createVehicle(ownerId, parsed.data);
+      await invalidateCache("vehicles");
       response.status(201).json({ status: "ok", data: vehicle });
     } catch (error) {
       handleRouteError(error, response, "Création impossible.");
@@ -236,6 +239,7 @@ vehicleRouter.patch("/:id", requireAuth, async (request, response) => {
 
   try {
     const vehicle = await updateVehicle(parsedId.data, userId, role, parsed.data);
+    await invalidateCache("vehicles");
     response.json({ status: "ok", data: vehicle });
   } catch (error) {
     response.status(403).json({ status: "error", message: error instanceof Error ? error.message : "Modification impossible." });

@@ -33,6 +33,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis (Cache) ────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: carguinee-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ── Backend (Express + Prisma) ───────────────────────────────────────────
   backend:
     build:
@@ -56,9 +70,12 @@ services:
       OM_MERCHANT_KEY: ""
       OM_SANDBOX: "true"
       MAPBOX_TOKEN: ""
+      REDIS_URL: "redis://redis:6379"
       NODE_ENV: "development"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./backend/src:/app/src

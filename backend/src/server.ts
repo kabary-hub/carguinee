@@ -39,9 +39,11 @@ import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger.js";
 import { initSentry } from "./lib/sentry.js";
+import { initRedis, closeRedis } from "./lib/redis.js";
 import { apiVersioning } from "./middleware/apiVersioning.js";
 
 initSentry();
+await initRedis();
 const app = express();
 
 const allowedOrigins = new Set([
