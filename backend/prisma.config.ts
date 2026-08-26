@@ -1,9 +1,13 @@
 import { defineConfig } from "prisma/config";
 import { config } from "dotenv";
 import path from "path";
+import fs from "fs";
 
-// S'assurer que le .env est chargé pour les commandes CLI Prisma
-config({ path: path.resolve(__dirname, ".env") });
+// Charger le .env seulement s'il existe (évite les erreurs en CI)
+const envPath = path.resolve(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+  config({ path: envPath });
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
@@ -14,4 +18,3 @@ export default defineConfig({
     url: process.env.DATABASE_URL || "postgresql://localhost:5432/carguinee",
   },
 });
-
