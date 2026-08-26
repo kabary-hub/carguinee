@@ -8,6 +8,11 @@ on:
 
 env:
   NODE_VERSION: "20"
+  # ⚠️ Valeurs de TEST uniquement, jetables et sans valeur en dehors de la CI :
+  # base éphémère (service postgres ci-dessous), secrets factices juste assez
+  # longs/valides pour satisfaire la validation Zod (backend/src/config/env.ts).
+  # Ne JAMAIS committer de vrais secrets ici — utiliser les GitHub Secrets
+  # (${{ secrets.NOM }}) si un jour ce workflow touche un environnement réel.
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public"
   JWT_SECRET: "test-secret-key-for-ci-that-is-at-least-32-chars-long"
   ENCRYPTION_KEY: "aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344"
@@ -108,7 +113,9 @@ jobs:
     name: "Docker Build"
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-build]
-    if: github.ref == 'refs/heads/main'
+    # Valide les images sur les PR (filet contre un Dockerfile cassé) ET sur main.
+    # Les images ne sont que construites (`-t ...:ci`), jamais poussées.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
