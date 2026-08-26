@@ -22,6 +22,37 @@ import { env } from "../../config/env.js";
 
 export const paymentRouter = Router();
 
+/**
+ * @swagger
+ * /api/payments:
+ *   post:
+ *     tags: [Payments]
+ *     summary: Initier un paiement Orange Money
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [bookingId, phone]
+ *             properties:
+ *               bookingId:
+ *                 type: string
+ *                 format: uuid
+ *               phone:
+ *                 type: string
+ *                 example: "224123456789"
+ *     responses:
+ *       200:
+ *         description: Paiement initié
+ *       400:
+ *         description: Données invalides
+ *       409:
+ *         description: Déjà payé
+ */
+
 // ── POST /api/payments — Initier un paiement ─────────────────────────────
 
 const createPaymentSchema = z.object({
@@ -220,6 +251,18 @@ paymentRouter.post("/callback", async (request, response) => {
 
 // ── GET /api/payments/history — Historique utilisateur ────────────────────
 
+/**
+ * @swagger
+ * /api/payments/history:
+ *   get:
+ *     tags: [Payments]
+ *     summary: Historique des paiements
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des paiements
+ */
 paymentRouter.get("/history", requireAuth, async (request, response) => {
   const userId = request.auth!.userId;
   const page = Number(request.query.page) || 1;

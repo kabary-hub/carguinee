@@ -9,6 +9,7 @@ import { loginSchema, registerSchema } from "./auth.schemas.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 import { strictLimiter, authLimiter } from "../../lib/rate-limiter.js";
 import { logger } from "../../lib/logger.js";
+import { auditLogin, auditLoginFailed, auditLog } from "../../lib/audit.js";
 import { sendPasswordResetEmail } from "../../lib/email.js";
 import { env } from "../../config/env.js";
 
@@ -162,9 +163,11 @@ authRouter.post("/login", authLimiter, async (request, response) => {
   try {
     const result = await login(parsed.data);
     setAuthCookie(response, result.accessToken);
+    auditLogin(result.user.id, result.user.phone, result.user.role, request.ip);
     response.json({ status: "ok", data: result });
   } catch (error) {
     if (error instanceof AccountDeactivatedError) {
+      auditLoginFailed(parsed.data.phone, request.ip, "deactivated");
       response.status(403).json({
         status: "error",
         code: "ACCOUNT_DEACTIVATED",
@@ -173,6 +176,7 @@ authRouter.post("/login", authLimiter, async (request, response) => {
       return;
     }
     if (error instanceof AccountBannedError) {
+      auditLoginFailed(parsed.data.phone, request.ip, "banned");
       response.status(403).json({
         status: "error",
         code: "ACCOUNT_BANNED",
@@ -180,6 +184,7 @@ authRouter.post("/login", authLimiter, async (request, response) => {
       });
       return;
     }
+    auditLoginFailed(parsed.data.phone, request.ip, "invalid_credentials");
     const message = error instanceof Error ? error.message : "Identifiants invalides.";
     response.status(401).json({ status: "error", message });
   }
@@ -586,7 +591,41 @@ authRouter.patch("/me", requireAuth, async (request, response) => {
 });
 
 // ── Logout ───────────────────────────────────────────────────────────────
-authRouter.post("/logout", (_request, response) => {
+authRouter.post("/logout", (request, response) => {
   response.clearCookie("auth_token", { path: "/" });
+  auditLog({ action: "auth.logout", userId: request.auth?.userId, success: true });
   response.json({ status: "ok", message: "Déconnexion réussie." });
+});
+
+// ── Refresh Token ──────────────────────────────────────────────────────────
+authRouter.post("/refresh", async (request, response) => {
+  const token = request.cookies?.auth_token;
+  if (!token) {
+    response.status(401).json({ status: "error", message: "Pas de token." });
+    return;
+  }
+  try {
+    const jwt = await import("jsonwebtoken");
+    const payload = jwt.default.verify(token, env.JWT_SECRET, { ignoreExpiration: true });
+    if (typeof payload === "string" || !payload.sub) {
+      response.status(401).json({ status: "error", message: "Token invalide." });
+      return;
+    }
+    // Vérifier que l'utilisateur existe toujours
+    const user = await prisma.user.findUnique({ where: { id: String(payload.sub) } });
+    if (!user || !user.isActive || user.isBanned) {
+      response.status(401).json({ status: "error", message: "Compte introuvable ou désactivé." });
+      return;
+    }
+    // Générer un nouveau token
+    const newToken = jwt.default.sign(
+      { sub: user.id, phone: user.phone, role: user.role },
+      env.JWT_SECRET,
+      { expiresIn: "24h" },
+    );
+    setAuthCookie(response, newToken);
+    response.json({ status: "ok", data: { accessToken: newToken } });
+  } catch {
+    response.status(401).json({ status: "error", message: "Token invalide ou expiré." });
+  }
 });

@@ -1,0 +1,115 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# CarGuinée — Docker Compose Staging
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Usage:
+#   docker compose -f docker-compose.staging.yml up -d
+#   docker compose -f docker-compose.staging.yml logs -f
+#   docker compose -f docker-compose.staging.yml down
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres-staging:
+    image: postgres:16-alpine
+    container_name: carguinee-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: carguinee_staging
+      POSTGRES_USER: carguinee_staging
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:-staging_password_change_me}
+    volumes:
+      - staging_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carguinee_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis-staging:
+    image: redis:7-alpine
+    container_name: carguinee-staging-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging
+
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  backend-staging:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: carguinee-staging-api
+    restart: unless-stopped
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_healthy
+    environment:
+      NODE_ENV: staging
+      PORT: 3000
+      DATABASE_URL: postgresql://carguinee_staging:${STAGING_DB_PASSWORD:-staging_password_change_me}@postgres-staging:5432/carguinee_staging
+      JWT_SECRET: ${STAGING_JWT_SECRET:-staging-jwt-secret-change-me-in-production-32chars}
+      ENCRYPTION_KEY: ${STAGING_ENCRYPTION_KEY:-aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344}
+      CORS_ORIGIN: ${STAGING_CORS_ORIGIN:-http://localhost:5174}
+      REDIS_URL: redis://redis-staging:6379
+      SENTRY_DSN: ${SENTRY_DSN_BACKEND:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      OM_APP_KEY: ${OM_APP_KEY:-}
+      OM_APP_SECRET: ${OM_APP_SECRET:-}
+      OM_MERCHANT_KEY: ${OM_MERCHANT_KEY:-}
+      OM_SANDBOX: "true"
+      MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - staging
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend-staging:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: carguinee-staging-frontend
+    restart: unless-stopped
+    depends_on:
+      backend-staging:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - staging
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  staging_pgdata:
+    driver: local
+
+# ── Networks ─────────────────────────────────────────────────────────────────
+networks:
+  staging:
+    driver: bridge

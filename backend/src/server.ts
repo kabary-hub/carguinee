@@ -21,7 +21,7 @@ import { chatRouter } from "./modules/chat/chat.routes.js";
 import { contractRouter } from "./modules/contracts/contract.routes.js";
 import { reportRouter, adminReportRouter } from "./modules/reports/report.routes.js";
 import { translateRouter } from "./modules/translate/translate.routes.js";
-import { standardLimiter } from "./lib/rate-limiter.js";
+import { standardLimiter, chatbotLimiter, writeLimiter } from "./lib/rate-limiter.js";
 import { logger, requestLogger } from "./lib/logger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { securityHeaders, cspReportHandler } from "./middleware/securityHeaders.js";
@@ -85,8 +85,8 @@ app.use("/api/admin", standardLimiter, validateCsrf, adminRouter);
 app.use("/api/admin/feature-flags", standardLimiter, validateCsrf, featureFlagsRouter);
 app.use("/api/payments", standardLimiter, paymentRouter);
 app.use("/api/referrals", standardLimiter, referralRouter);
-app.use("/api/chatbot", standardLimiter, chatbotRouter);
-app.use("/api/boosting", standardLimiter, validateCsrf, boostingRouter);
+app.use("/api/chatbot", chatbotLimiter, chatbotRouter);
+app.use("/api/boosting", writeLimiter, validateCsrf, boostingRouter);
 app.use("/api/loyalty", standardLimiter, validateCsrf, loyaltyRouter);
 app.use("/api/stats", standardLimiter, validateCsrf, statsRouter);
 app.post("/api/auth/csrf-refresh", refreshCsrf);
@@ -121,24 +121,44 @@ app.post("/api/csp-report", express.json({ type: "application/csp-report" }), cs
 app.post("/api/csp-report", express.json({ type: "application/reports+json" }), cspReportHandler);
 
 app.get("/api/health", async (_request, response) => {
+  const startTime = Date.now();
+  const checks: Record<string, string> = {};
+  let overallStatus = "ok";
+
+  // 1. Database check
   try {
     await prisma.$queryRaw`SELECT 1`;
-
-    response.json({
-      status: "ok",
-      service: "carguinee-api",
-      database: "connected",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error({ error }, "Health check database error");
-
-    response.status(503).json({
-      status: "error",
-      service: "carguinee-api",
-      database: "unavailable",
-    });
+    checks.database = "connected";
+  } catch {
+    checks.database = "unavailable";
+    overallStatus = "degraded";
   }
+
+  // 2. Memory check
+  const mem = process.memoryUsage();
+  const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(mem.heapTotal / 1024 / 1024);
+  checks.memory = `${heapUsedMB}MB / ${heapTotalMB}MB`;
+
+  // 3. Uptime
+  const uptimeSeconds = Math.round(process.uptime());
+  checks.uptime = `${uptimeSeconds}s`;
+
+  // 4. Node version
+  checks.nodeVersion = process.version;
+
+  // 5. Environment
+  checks.environment = process.env.NODE_ENV ?? "development";
+
+  const statusCode = overallStatus === "ok" ? 200 : 503;
+  response.status(statusCode).json({
+    status: overallStatus,
+    service: "carguinee-api",
+    version: process.env.npm_package_version ?? "1.0.0",
+    checks,
+    responseTime: `${Date.now() - startTime}ms`,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 

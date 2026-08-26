@@ -1,10 +1,11 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "CarGuinée Backend API",
   "main": "index.js",
   "scripts": {
     "test": "tsx --test src/config/*.test.ts src/modules/*/*.test.ts tests/integration/*.test.ts",
+    "test:coverage": "tsx --test --test-reporter=spec src/config/*.test.ts src/modules/*/*.test.ts tests/integration/*.test.ts 2>&1 | tail -20",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
@@ -13,7 +14,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "demo:seed": "tsx prisma/seed.ts",
-    "demo:galleries": "tsx prisma/sync-demo-galleries.ts"
+    "demo:galleries": "tsx prisma/sync-demo-galleries.ts",
+    "health": "curl -s http://localhost:3000/api/health | node -e \"process.stdin.on('data',d=>{const j=JSON.parse(d);console.log(j.status==='ok'?'✅ Health OK':'❌ Health FAIL');console.log(JSON.stringify(j.checks,null,2))})\""
   },
   "keywords": [],
   "author": "",

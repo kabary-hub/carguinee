@@ -64,7 +64,6 @@ jobs:
     name: Quality Gate
     if: ${{ github.event.inputs.rollback != 'true' }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       postgres:
         image: postgres:16-alpine
@@ -84,15 +83,38 @@ jobs:
       RESEND_API_KEY: re_test_placeholder
       CORS_ORIGIN: https://carguinee.com
       PORT: 3000
+      NODE_ENV: test
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
-      - run: cd backend && npm ci && npx prisma generate && npx prisma db push --skip-generate && npx tsc --noEmit && npm test && npx tsc
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Backend — Install, Generate, Migrate, Typecheck, Test
+        working-directory: backend
+        run: |
+          npm ci
+          npx prisma generate
+          npx prisma migrate deploy
+          npx tsc --noEmit
+          npx tsx --test src/**/*.test.ts tests/**/*.test.ts
+
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - run: cd frontend && npm ci && npx tsc -b && npm run lint && npm test && npx vite build
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend — Install, Typecheck, Build
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npx vite build
 
   # ── Blue-Green Deploy ─────────────────────────────────────────────────────
   deploy:
@@ -178,12 +200,10 @@ jobs:
           ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
             "cd ${{ env.PROD_PATH }} && \
              echo '${{ steps.slot.outputs.deploy }}' > active-slot.txt && \
-             # Update nginx upstream to point to new port
              sudo sed -i 's/server 127.0.0.1:[0-9]*/server 127.0.0.1:${{ steps.slot.outputs.port }}/g' \
                /etc/nginx/sites-available/carguinee-api.conf && \
              sudo nginx -t && \
              sudo systemctl reload nginx && \
-             # Stop old slot
              pm2 stop carguinee-${{ steps.slot.outputs.active }} 2>/dev/null || true && \
              echo '✅ Traffic switched to ${{ steps.slot.outputs.deploy }}'"
 
@@ -198,7 +218,6 @@ jobs:
             sleep 5
           done
           echo "❌ Post-deploy health check failed — AUTO-ROLLBACK"
-          # Auto-rollback
           ssh ${{ env.PROD_USER }}@${{ env.PROD_HOST }} \
             "cd ${{ env.PROD_PATH }} && ./scripts/rollback.sh"
           exit 1

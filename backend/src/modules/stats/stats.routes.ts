@@ -27,8 +27,26 @@ function sinceDate(period: Period): Date {
 
 
 /**
- * GET /api/stats?period=7d|30d|6m
- * Retourne les statistiques de l'utilisateur connecté filtrées par période.
+ * @swagger
+ * /api/stats:
+ *   get:
+ *     tags: [Stats]
+ *     summary: Statistiques utilisateur (propriétaire/admin)
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [7d, 30d, 6m]
+ *           default: 6m
+ *         description: Période d'analyse
+ *     responses:
+ *       200:
+ *         description: Statistiques
+ *       401:
+ *         description: Non authentifié
  */
 statsRouter.get("/", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);

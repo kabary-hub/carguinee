@@ -8,6 +8,37 @@ import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 export const bookingRouter = Router();
 const bookingIdSchema = z.string().uuid();
 
+/**
+ * @swagger
+ * /api/bookings:
+ *   post:
+ *     tags: [Bookings]
+ *     summary: Créer une réservation
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [vehicleId, startDate, endDate]
+ *             properties:
+ *               vehicleId:
+ *                 type: string
+ *                 format: uuid
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: Réservation créée
+ *       400:
+ *         description: Données invalides
+ */
 bookingRouter.post("/", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -25,6 +56,18 @@ bookingRouter.post("/", requireAuth, async (request, response) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/bookings/mine:
+ *   get:
+ *     tags: [Bookings]
+ *     summary: Mes réservations
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des réservations
+ */
 bookingRouter.get("/mine", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -32,6 +75,20 @@ bookingRouter.get("/mine", requireAuth, async (request, response) => {
   response.json({ status: "ok", data: await listMyBookings(userId) });
 });
 
+/**
+ * @swagger
+ * /api/bookings/owner:
+ *   get:
+ *     tags: [Bookings]
+ *     summary: Réservations reçues (propriétaire)
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des réservations
+ *       403:
+ *         description: Accès propriétaire requis
+ */
 bookingRouter.get("/owner", requireAuth, async (request, response) => {
   const userId = request.auth?.userId;
   const role = request.auth?.role;

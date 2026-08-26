@@ -8,7 +8,6 @@ on:
 
 env:
   NODE_VERSION: "20"
-  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public"
 
 jobs:
   # ─── BACKEND ──────────────────────────────────────────────
@@ -45,33 +44,28 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma client
-        run: npx prisma generate
         working-directory: backend
+        run: npx prisma generate
 
       - name: Run database migrations
-        run: npx prisma migrate deploy
         working-directory: backend
+        run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public
 
-      - name: Seed database
-        run: npx tsx prisma/seed-faq.ts
+      - name: Type check
         working-directory: backend
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public
+        run: npx tsc --noEmit
 
       - name: Run tests
         working-directory: backend
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public
-          JWT_SECRET: test-secret-key-for-ci
+          JWT_SECRET: test-secret-key-for-ci-that-is-at-least-32-chars-long
           JWT_EXPIRES_IN: 1h
-        run: npx tsx --test src/**/*.test.ts tests/**/*.test.ts 2>&1 || true
-
-      - name: Type check
-        working-directory: backend
-        run: npx tsc --noEmit 2>&1 | head -50
-        continue-on-error: true
+          ENCRYPTION_KEY: aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344
+          NODE_ENV: test
+        run: npx tsx --test src/**/*.test.ts tests/**/*.test.ts
 
   # ─── FRONTEND ────────────────────────────────────────────
   frontend-build:
@@ -88,17 +82,21 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
         working-directory: frontend
+        run: npm ci
 
       - name: Type check
-        run: npx tsc --noEmit 2>&1 | head -50
         working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
         continue-on-error: true
 
       - name: Build
-        run: npx vite build
         working-directory: frontend
+        run: npm run build
 
   # ─── DOCKER BUILD ────────────────────────────────────────
   docker-build:
@@ -106,7 +104,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-test, frontend-build]
     if: github.ref == 'refs/heads/main'
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -114,7 +111,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build backend image
-        run: docker build -t carguine-backend:latest ./backend
+        run: docker build -t carguine-backend:ci ./backend
 
       - name: Build frontend image
-        run: docker build -t carguine-frontend:latest ./frontend
+        run: docker build -t carguine-frontend:ci ./frontend

@@ -1,52 +1,69 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# CarGuinée Backend — Dockerfile (multi-stage)
+# CarGuinée Backend — Dockerfile (multi-stage optimisé)
 # ══════════════════════════════════════════════════════════════════════════════
 
-# ── Étape 1 : Builder ──────────────────────────────────────────────────────
+# ── Étape 1 : Dépendances ──────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copier uniquement package.json + lock pour maximiser le cache Docker
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Générer Prisma client
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# ── Étape 2 : Build ────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Installer les dépendances
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Copier les dépendances installées depuis deps
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./
 
 # Copier le code source
-COPY . .
-
-# Générer le client Prisma
-RUN npx prisma generate
+COPY tsconfig.json ./
+COPY src ./src
 
 # Compiler TypeScript
-RUN npm run build
+RUN npx tsc --outDir dist
 
-# ── Étape 2 : Production ───────────────────────────────────────────────────
+# ── Étape 3 : Production ───────────────────────────────────────────────────
 FROM node:20-alpine AS production
+
+# Installer wget pour le healthcheck
+RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Installer les dépendances de production uniquement
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+# Variables d'environnement par défaut
+ENV NODE_ENV=production
+ENV PORT=3000
 
-# Copier le client Prisma généré
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-# Copier le code compilé
+# Copier uniquement le nécessaire
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-
-# Copier le schema Prisma (nécessaire pour les migrations)
+COPY --from=deps /app/package.json ./
 COPY prisma ./prisma
 
-# Créer le dossier uploads
-RUN mkdir -p /app/uploads
+# Créer les dossiers nécessaires
+RUN mkdir -p /app/uploads /var/log/carguinee
+
+# Créer un user non-root pour la sécurité
+RUN addgroup -g 1001 -S carguinee && \
+    adduser -S carguinee -u 1001 -G carguinee && \
+    chown -R carguinee:carguinee /app
+
+USER carguinee
 
 # Port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+# Health check robuste
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 # Démarrer

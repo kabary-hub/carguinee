@@ -16,7 +16,18 @@ import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";
 
 export const chatRouter = Router();
 
-// ── Lister les conversations ──────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/messages/conversations:
+ *   get:
+ *     tags: [Messages]
+ *     summary: Lister les conversations
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Liste des conversations
+ */
 chatRouter.get("/conversations", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;
@@ -51,7 +62,35 @@ chatRouter.get("/conversations/:id/messages", requireAuth, async (request, respo
   }
 });
 
-// ── Envoyer un message ────────────────────────────────────────────────────────
+/**
+ * @swagger
+ * /api/messages/conversations/{id}/messages:
+ *   post:
+ *     tags: [Messages]
+ *     summary: Envoyer un message
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [content]
+ *             properties:
+ *               content:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Message envoyé
+ */
 chatRouter.post("/conversations/:id/messages", requireAuth, async (request, response) => {
   const userId = extractUserId(request, response);
   if (!userId) return;

@@ -20,7 +20,7 @@ function getContractStatus(status: string): string {
 
 function generateContractNumber(): string {
   const year = new Date().getFullYear();
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
   return `CTR-${year}-${random}`;
 }
 
@@ -41,7 +41,7 @@ describe('Contract', () => {
 
   describe('Contract number generation', () => {
     it('starts with CTR-', () => assert.ok(generateContractNumber().startsWith('CTR-')));
-    it('has 13 characters', () => assert.equal(generateContractNumber().length, 13));
+    it('has 14 characters', () => assert.equal(generateContractNumber().length, 14));
     it('generates unique numbers', () => {
       const nums = new Set<string>();
       for (let i = 0; i < 100; i++) nums.add(generateContractNumber());

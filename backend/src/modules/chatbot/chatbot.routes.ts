@@ -22,7 +22,25 @@ import {
 
 export const chatbotRouter = Router();
 
-// ── POST /api/chatbot/session — Initialiser une session ──────────────────
+/**
+ * @swagger
+ * /api/chatbot/session:
+ *   post:
+ *     tags: [Chatbot]
+ *     summary: Initialiser une session chatbot
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Session créée ou récupérée
+ */
 chatbotRouter.post("/session", optionalAuth, async (request, response) => {
   try {
     const userId = request.auth?.userId;
@@ -34,7 +52,33 @@ chatbotRouter.post("/session", optionalAuth, async (request, response) => {
   }
 });
 
-// ── POST /api/chatbot/message — Envoyer un message ──────────────────────
+/**
+ * @swagger
+ * /api/chatbot/message:
+ *   post:
+ *     tags: [Chatbot]
+ *     summary: Envoyer un message au chatbot
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sessionId, message]
+ *             properties:
+ *               sessionId:
+ *                 type: string
+ *                 format: uuid
+ *               message:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 500
+ *     responses:
+ *       200:
+ *         description: Réponse du chatbot
+ *       400:
+ *         description: Données invalides
+ */
 const messageSchema = z.object({
   sessionId: z.string().uuid(),
   message: z.string().min(1).max(500),
