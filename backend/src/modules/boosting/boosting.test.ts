@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { BOOST_PLANS, boostSortKey, type BoostLevel } from './boosting.service.js';
+import { BOOST_PLANS, boostSortKey } from './boosting.service.js';
 
 describe('Boosting module', () => {
   // ── Plans ────────────────────────────────────────────────────────────────

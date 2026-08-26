@@ -8,7 +8,6 @@
  */
 
 import { Router } from "express";
-import { z } from "zod";
 import { requireAuth } from "./auth.middleware.js";
 import { prisma } from "../../lib/prisma.js";
 import { dechiffrerSiNecessaire } from "../../lib/encryption.js";

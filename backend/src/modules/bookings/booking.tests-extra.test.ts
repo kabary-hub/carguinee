@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 // ── Booking calculations tests ────────────────────────────────────────────
@@ -119,7 +119,7 @@ describe('Booking Transitions', () => {
 // ── Phone validation tests (used by auth module) ─────────────────────────
 
 function normalizeGuineanPhone(input: string): string {
-  const cleaned = input.replace(/[\s\-()\.]/g, '');
+  const cleaned = input.replace(/[\s\-().]/g, '');
   if (cleaned.startsWith('+224')) return cleaned.substring(1);
   if (cleaned.startsWith('00224')) return cleaned.substring(2);
   if (cleaned.startsWith('224')) return cleaned;

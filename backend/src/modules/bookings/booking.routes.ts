@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
+import { requireAuth } from "../auth/auth.middleware.js";
 import { createBookingSchema, bookingStatusSchema } from "./booking.schemas.js";
 import { createBooking, listMyBookings, listOwnerBookings, updateBookingStatus, markDepositPaid } from "./booking.service.js";
 import { extractUserId, handleRouteError } from "../../lib/route-helpers.js";

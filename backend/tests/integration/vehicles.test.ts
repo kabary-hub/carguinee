@@ -38,7 +38,7 @@ test("booking-transitions: TERMINEE est un état final", async () => {
 // ── Tests des calculs de réservation ────────────────────────────────────────
 
 test("booking-calculations: rentalDays calcule correctement", async () => {
-  const { rentalDays, rentalTotalAmount } = await import("../../src/modules/bookings/booking.calculations.js");
+  const { rentalDays } = await import("../../src/modules/bookings/booking.calculations.js");
   const start = new Date("2025-01-01T00:00:00Z");
   const end = new Date("2025-01-04T00:00:00Z");
   const days = rentalDays(start, end);

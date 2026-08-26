@@ -7,7 +7,6 @@
  */
 
 import { prisma } from "../../lib/prisma.js";
-import { logger } from "../../lib/logger.js";
 import { randomUUID } from "crypto";
 
 // ── Types ────────────────────────────────────────────────────────────────

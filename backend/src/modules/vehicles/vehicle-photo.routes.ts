@@ -53,10 +53,7 @@
 
 import { Router } from "express";
 import { requireAuth, requireRoles } from "../auth/auth.middleware.js";
-import {
-  vehiclePhotoUpload,
-  vehiclePhotoUploadErrorHandler,
-} from "../../middleware/vehicle-upload.js";
+import { vehiclePhotoUpload } from "../../middleware/vehicle-upload.js";
 import {
   addVehiclePhotos,
   deleteVehiclePhoto,

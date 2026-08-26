@@ -71,9 +71,7 @@ test("retry forcé quand langue détectée = langue cible", () => {
 });
 
 test("retry forcé quand résultat noop avec langue opposée", () => {
-  const OPPOSITE: Record<string, string> = { fr: "en", en: "fr", es: "en", de: "en" };
   const detectedLang = "en";
-  const targetLang = "fr";
   const forcedSource = detectedLang === "en" ? "fr" : "en";
   assert.equal(forcedSource, "fr");
 });

@@ -53,6 +53,15 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      # Lint BLOQUANT : oxlint (Rust) parse TS 7 nativement — typescript-eslint
+      # ne supporte pas encore TS 7 (peer typescript <6.1.0). Catégorie
+      # "correctness" + no-unused-vars en ERREUR (voir backend/.oxlintrc.json) :
+      # tout code mort ou bug détecté fait échouer la CI. Placé tôt = feedback
+      # rapide, avant même la génération Prisma (oxlint ignore src/generated).
+      - name: Lint (oxlint)
+        working-directory: backend
+        run: npm run lint
+
       - name: Generate Prisma client
         working-directory: backend
         run: npx prisma generate
@@ -99,6 +108,10 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit
 
+      # Lint frontend : NON bloquant pour l'instant (continue-on-error). L'app a
+      # un backlog connu d'erreurs eslint (imports dupliqués, variables
+      # inutilisées) à résorber avant de le rendre bloquant. Le lint BACKEND est
+      # déjà bloquant (job backend-test → « Lint (oxlint) »).
       - name: Lint
         working-directory: frontend
         run: npm run lint
