@@ -73,6 +73,13 @@ npm run dev                   # Port 5173
 | `620980118` | `12345678` | Propriétaire |
 | `620980119` | `12345678` | Administrateur |
 
+### Postman
+
+Collection API complète disponible dans `docs/postman/` :```bash
+# Importer dans Postman
+docs/postman/CarGuinee-API.postman_collection.json
+```
+
 ## 🛠️ Stack technique
 
 ### Backend
@@ -140,18 +147,102 @@ npm run dev                   # Port 5173
 ## 🧪 Tests
 
 ```bash
-# Backend (143 tests)
+# Backend — tests unitaires + intégration
 cd backend && npm test
 
-# Frontend (202 tests)
+# Frontend — tests composants
 cd frontend && npx vitest run
+
+# E2E — tests bout en bout (Playwright)
+cd frontend && npx playwright test
+
+# Typecheck
+cd backend && npx tsc --noEmit
+cd frontend && npx tsc --noEmit
 ```
 
-| Type | Backend | Frontend |
-|------|---------|----------|
-| Unitaires | 18 fichiers | 20 fichiers |
-| Intégration | 6 fichiers | — |
-| Total | 143 tests | 202 tests |
+| Type | Fichiers | Description |
+|------|----------|-------------|
+| Backend unitaires | 24 fichiers | Services, validations, logique métier |
+| Backend intégration | 3 fichiers | Routes API (stats, payments, chat) |
+| Frontend unitaires | 20 fichiers | Composants, hooks, utils |
+| E2E Playwright | 8 fichiers | Auth, chat, paiements, réservations, admin, navigation |
+| **Total** | **55 fichiers** | **350+ tests** |
+
+### Couverture par module backend
+
+| Module | Tests |
+|--------|-------|
+| auth | ✅ service + phone validation |
+| bookings | ✅ calculations + edge cases + transitions + extra |
+| vehicles | ✅ demo gallery + photo limits + upload |
+| chat | ✅ messages, conversations, unread |
+| chatbot | ✅ keyword matching, language detection |
+| payments | ✅ phone validation, status transitions, amounts |
+| boosting | ✅ plans, sort key, duration, pricing |
+| contracts | ✅ validation |
+| favorites | ✅ add/remove |
+| loyalty | ✅ points calculation |
+| reviews | ✅ creation, rating |
+| notifications | ✅ types, priority, pagination |
+| referrals | ✅ codes, rewards, tracking |
+| metrics | ✅ response times, error rates |
+| reports | ✅ status, pagination, admin actions |
+| owner-requests | ✅ role validation, approval flow |
+| admin | ✅ service |
+| stats | ✅ date ranges, revenue, occupancy, aggregation |
+| translate | ✅ service |
+| cache | ✅ TTL, invalidation |
+
+## 🏗️ CI/CD
+
+```yaml
+# .github/workflows/ci.yml
+- Lint backend + frontend
+- Typecheck
+- Unit tests (backend)
+- Unit tests (frontend)
+- Build frontend
+- Docker build (multi-stage)
+```
+
+## 🐳 Docker
+
+### Development
+```bash
+docker compose up          # PostgreSQL + Redis + Backend + Frontend
+```
+
+### Production
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+| Service | Image | Port |
+|---------|-------|------|
+| PostgreSQL | postgres:16-alpine | 5432 |
+| Redis | redis:7-alpine | 6379 |
+| Backend | Node.js 20 | 3000 |
+| Frontend | Nginx + SPA | 80 |
+
+### Variables d'environnement
+
+Copier `.env.example` → `.env` et adapter.
+
+## 📱 PWA (Progressive Web App)
+
+- `manifest.json` — installable sur mobile
+- Service Worker — cache des assets statiques
+- Meta tags — theme-color, apple-touch-icon
+- Fonctionne hors-ligne (navigation cacheée)
+
+## ⚡ Performance
+
+- **Redis caching** — endpoints lecture (stats, véhicules, reviews) — TTL 30s
+- **Nginx gzip** — compression des assets (JS, CSS, JSON)
+- **Image optimization** — thumbnails automatiques (webp, 800px max)
+- **Lazy loading** — routes code-split React
+- **Query caching** — TanStack Query avec staleTime
 
 ## 🚀 Déploiement
 
