@@ -8,6 +8,11 @@ on:
 
 env:
   NODE_VERSION: "20"
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public"
+  JWT_SECRET: "test-secret-key-for-ci-that-is-at-least-32-chars-long"
+  ENCRYPTION_KEY: "aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344"
+  JWT_EXPIRES_IN: "1h"
+  NODE_ENV: "test"
 
 jobs:
   # ─── BACKEND ──────────────────────────────────────────────
@@ -50,8 +55,6 @@ jobs:
       - name: Run database migrations
         working-directory: backend
         run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public
 
       - name: Type check
         working-directory: backend
@@ -59,12 +62,6 @@ jobs:
 
       - name: Run tests
         working-directory: backend
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/carguine_test?schema=public
-          JWT_SECRET: test-secret-key-for-ci-that-is-at-least-32-chars-long
-          JWT_EXPIRES_IN: 1h
-          ENCRYPTION_KEY: aabbccdd11223344aabbccdd11223344aabbccdd11223344aabbccdd11223344
-          NODE_ENV: test
         run: npx tsx --test src/**/*.test.ts tests/**/*.test.ts
 
   # ─── FRONTEND ────────────────────────────────────────────
@@ -96,7 +93,7 @@ jobs:
 
       - name: Build
         working-directory: frontend
-        run: npm run build
+        run: npx vite build
 
   # ─── DOCKER BUILD ────────────────────────────────────────
   docker-build:
