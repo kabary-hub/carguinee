@@ -284,7 +284,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             />
             <aside
               ref={sidebarRef}
-              className="fixed left-0 top-0 z-50 flex h-full w-72 max-w-[85vw] flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform lg:hidden dark:border-slate-800 dark:bg-slate-900"
+              className="fixed left-0 top-0 z-50 flex h-full w-64 max-w-[80vw] flex-col border-r border-slate-200 bg-white shadow-2xl transition-transform lg:hidden dark:border-slate-800 dark:bg-slate-900"
             >
               <div className="flex h-full flex-col">
                 {sidebarContent}
