@@ -60,14 +60,9 @@ jobs:
         working-directory: backend
         run: npx tsc --noEmit
 
-      - name: Run unit tests
+      - name: Run all tests
         working-directory: backend
-        run: npx tsx --test src/config/*.test.ts src/modules/*/*.test.ts
-
-      - name: Run integration tests
-        working-directory: backend
-        run: npx tsx --test tests/**/*.test.ts
-        continue-on-error: true
+        run: npm test
 
   # ─── FRONTEND ────────────────────────────────────────────
   frontend-build:
