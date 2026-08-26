@@ -154,8 +154,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">      {/* ═══ NAVBAR ═══ */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3">
-          {/* Gauche : Logo + Hamburger */}
+        {/* ── Rangée 1 : Logo + Controls ── */}
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
+          {/* Gauche : Hamburger + Logo */}
           <div className="flex items-center gap-2">
             {user && (
               <button
@@ -183,53 +184,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </svg>
               </button>
             )}
-            <Link to="/" className="whitespace-nowrap text-lg font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
-              CarGuinée
+            <Link to="/" className="whitespace-nowrap text-lg font-black tracking-tight sm:text-xl">
+              <span className="text-white dark:text-white">Car</span><span className="text-emerald-500 dark:text-emerald-400">Guinée</span>
             </Link>
           </div>
-
-          {/* Centre : Navigation desktop */}
-          <nav className="hidden items-center gap-1 md:flex">
-            <Link
-              to="/vehicules"
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                isActive("/vehicules")
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-              }`}
-            >
-              {t("nav.vehicles")}
-            </Link>
-            {user && (
-              <Link
-                to="/reservations"
-                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                  isActive("/reservations")
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-                }`}
-              >
-                {t("nav.myBookings")}
-              </Link>
-            )}
-            {user && (
-              <Link
-                to="/messages"
-                className={`relative rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                  isActive("/messages")
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-                }`}
-              >
-                {t("nav.messages")}
-                {unreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white z-10 ring-1 ring-white dark:ring-slate-900">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </Link>
-            )}
-          </nav>
 
           {/* Droite : Langue + Thème + Notifications + Profil */}
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -258,9 +216,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </span>
                   <span className="hidden max-w-[100px] truncate text-sm sm:inline">{user.firstName}</span>
                 </Link>
-                <span className="hidden rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 lg:inline-block dark:bg-emerald-500/15 dark:text-emerald-300">
-                  {roleLabel(user.role)}
-                </span>
               </>
             )}
 
@@ -274,6 +229,49 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
           </div>
         </div>
+
+        {/* ── Rangée 2 : Onglets navigation (mobile + desktop) ── */}
+        <nav className="flex border-t border-slate-100 dark:border-slate-800">
+          <Link
+            to="/vehicules"
+            className={`flex-1 py-2.5 text-center text-sm font-bold transition ${
+              isActive("/vehicules")
+                ? "border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                : "text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
+            }`}
+          >
+            {t("nav.vehicles")}
+          </Link>
+          {user && (
+            <Link
+              to="/reservations"
+              className={`flex-1 py-2.5 text-center text-sm font-bold transition ${
+                isActive("/reservations")
+                  ? "border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                  : "text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
+              }`}
+            >
+              {t("nav.myBookings")}
+            </Link>
+          )}
+          {user && (
+            <Link
+              to="/messages"
+              className={`relative flex-1 py-2.5 text-center text-sm font-bold transition ${
+                isActive("/messages")
+                  ? "border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                  : "text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
+              }`}
+            >
+              {t("nav.messages")}
+              {unreadCount > 0 && (
+                <span className="absolute right-1/4 top-1 flex h-4 min-w-[16px] -translate-y-0.5 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white z-10 ring-1 ring-white dark:ring-slate-900">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+        </nav>
       </header>
 
       <div className="flex flex-1">
