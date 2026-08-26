@@ -74,74 +74,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // ── Liens de la NAVBAR (haut) — version desktop ──
-  const navBarLinksDesktop = (
-    <>
-      <Link
-        to="/vehicules"
-        className={`rounded-lg px-2 py-1.5 text-[13px] font-semibold transition sm:px-3 sm:text-sm ${
-          isActive("/vehicules")
-            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-            : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-        }`}
-      >
-        {t("nav.vehicles")}
-      </Link>
-      {user && (
-        <Link
-          to="/reservations"
-          className={`rounded-lg px-2 py-1.5 text-[13px] font-semibold transition sm:px-3 sm:text-sm ${
-            isActive("/reservations")
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-              : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-          }`}
-        >
-          {t("nav.myBookings")}
-        </Link>
-      )}
-    </>
-  );
 
-  // ── Liens de la NAVBAR (mobile) — 2 colonnes compactes ──
-  const navBarLinksMobile = (
-    <>
-      <Link
-        to="/vehicules"
-        className={`flex-1 min-w-0 text-center rounded-lg px-2 py-2 text-xs font-bold truncate ${
-          isActive("/vehicules")
-            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-            : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-        }`}
-      >
-        {t("nav.vehicles")}
-      </Link>
-      <Link
-        to="/reservations"
-        className={`flex-1 min-w-0 text-center rounded-lg px-2 py-2 text-xs font-bold truncate ${
-          isActive("/reservations")
-            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-            : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-        }`}
-      >
-        {t("nav.myBookings")}
-      </Link>
-      <Link
-        to="/messages"
-        className={`relative flex-none rounded-lg px-2 py-2 text-xs font-bold ${
-          isActive("/messages")
-            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-            : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
-        }`}
-      >
-        ✉
-        {unreadCount > 0 && (
-          <span className="absolute -top-1.5 right-0 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </Link>
-    </>
-  );
+
+
 
   // ── Liens de la SIDEBAR ──
   const sidebarLinks = user
@@ -217,13 +152,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
-      {/* ═══ NAVBAR ═══ */}
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">      {/* ═══ NAVBAR ═══ */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
-        {/* Ligne principale : Logo + Nav(center) + Controls(right) */}
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-2 py-1.5 sm:px-4 sm:py-2 lg:px-6">
-          {/* Gauche : Hamburger + Logo */}
-          <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3">
+          {/* Gauche : Logo + Hamburger */}
+          <div className="flex items-center gap-2">
             {user && (
               <button
                 type="button"
@@ -231,14 +164,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   setMobileSidebarOpen(!mobileSidebarOpen);
                   setDesktopSidebarCollapsed(!desktopSidebarCollapsed);
                 }}
-                className="flex-none rounded-lg p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800 lg:p-2"
+                className="rounded-lg border border-slate-300 p-2 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
                 aria-label={mobileSidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 dark:text-slate-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 dark:text-slate-300">
                   {mobileSidebarOpen ? (
                     <>
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
                     </>
                   ) : (
                     <>
@@ -250,19 +183,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </svg>
               </button>
             )}
-            <Link to="/" className="whitespace-nowrap text-base font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
-              <span className="hidden sm:inline">CarGuinée</span>
-              <span className="sm:hidden">CG</span>
+            <Link to="/" className="whitespace-nowrap text-lg font-black tracking-tight text-slate-950 dark:text-white sm:text-xl">
+              CarGuinée
             </Link>
           </div>
 
           {/* Centre : Navigation desktop */}
           <nav className="hidden items-center gap-1 md:flex">
-            {navBarLinksDesktop}
+            <Link
+              to="/vehicules"
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                isActive("/vehicules")
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+              }`}
+            >
+              {t("nav.vehicles")}
+            </Link>
+            {user && (
+              <Link
+                to="/reservations"
+                className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                  isActive("/reservations")
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
+                }`}
+              >
+                {t("nav.myBookings")}
+              </Link>
+            )}
             {user && (
               <Link
                 to="/messages"
-                className={`relative rounded-lg px-2 py-1.5 text-[13px] font-semibold transition sm:px-3 sm:text-sm ${
+                className={`relative rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                   isActive("/messages")
                     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
                     : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
@@ -270,7 +223,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 {t("nav.messages")}
                 {unreadCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white z-10 ring-1 ring-white dark:ring-slate-900">
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white z-10 ring-1 ring-white dark:ring-slate-900">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -279,31 +232,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* Droite : Langue + Thème + Notifications + Profil */}
-          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1.5">
-            <div className="hidden sm:block"><LanguageSwitcher /></div>
-            <div className="hidden sm:block"><ThemeToggle /></div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <LanguageSwitcher />
+            <ThemeToggle />
 
             {user && (
               <>
                 <Link
                   to="/notifications"
-                  className="relative rounded-lg p-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 sm:p-2"
+                  className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800"
                   title={t("nav.notifications")}
                 >
                   🔔
                 </Link>
                 <Link
                   to="/profil"
-                  className={`hidden items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition lg:flex ${
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                     isActive("/profil")
                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
                       : "text-slate-600 hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-emerald-400"
                   }`}
                 >
-                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                     {user.firstName?.[0]}{user.lastName?.[0]}
                   </span>
-                  <span className="max-w-[100px] truncate text-sm">{user.firstName}</span>
+                  <span className="hidden max-w-[100px] truncate text-sm sm:inline">{user.firstName}</span>
                 </Link>
                 <span className="hidden rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 lg:inline-block dark:bg-emerald-500/15 dark:text-emerald-300">
                   {roleLabel(user.role)}
@@ -314,17 +267,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {!user && (
               <Link
                 to="/connexion"
-                className="rounded-lg bg-emerald-600 px-2 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 sm:px-3 sm:text-sm"
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-emerald-700"
               >
                 {t("nav.login")}
               </Link>
             )}
           </div>
-        </div>
-
-        {/* ── Navigation mobile : rangée compacte ── */}
-        <div className="flex gap-1 border-t border-slate-100 px-2 py-1.5 sm:hidden dark:border-slate-800">
-          {navBarLinksMobile}
         </div>
       </header>
 
