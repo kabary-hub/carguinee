@@ -63,6 +63,7 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: npx tsx --test src/**/*.test.ts tests/**/*.test.ts
+        timeout-minutes: 5
 
   # ─── FRONTEND ────────────────────────────────────────────
   frontend-build:
