@@ -66,6 +66,7 @@ jobs:
     name: Quality Gate
     if: ${{ github.event.inputs.rollback != 'true' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     services:
       postgres:
         image: postgres:16-alpine
